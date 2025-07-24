@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wealth / Career Timeline</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:2rem;max-width:600px}
+label{display:block;margin:.5rem 0}
+input{width:100%;padding:.4rem}
+button{margin-top:1rem;padding:.6rem;width:100%}
+.table{margin-top:2rem;border-collapse:collapse;width:100%}
+td,th{border:1px solid #ddd;padding:.4rem;font-size:.9rem;text-align:center}
+.excellent{background:#0a7d2c;color:#fff}
+.good{background:#6cc04a}
+.neutral{background:#bfbfbf}
+.challenge{background:#ffa500}
+.risk{background:#d62728;color:#fff}
+</style>
+
+<h2>Quick Forecast</h2>
+<form id="f">
+<label>Name <input name="name" required></label>
+<label>Birth Date (YYYY‑MM‑DD) <input name="date" required></label>
+<label>Birth Time (HH:MM, 24 h) <input name="time" required></label>
+<label>Latitude (°) <input name="lat" required></label>
+<label>Longitude (°) <input name="lon" required></label>
+<label>Timezone (+05:30) <input name="tz" value="+05:30" required></label>
+<button type="submit">Get Timeline</button>
+</form>
+
+<table id="out" class="table" hidden>
+<thead><tr><th>Period</th><th>Rating</th></tr></thead><tbody></tbody>
+</table>
+
+<script>
+document.getElementById('f').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const form=Object.fromEntries(new FormData(e.target));
+ const res=await fetch('/timeline',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(form)});
+ const rows=await res.json();
+ const tb=document.querySelector('#out tbody');
+ tb.innerHTML='';
+ rows.forEach(r=>{
+   const tr=document.createElement('tr');
+   tr.innerHTML=`<td>${r.period}</td><td class="${r.rating.toLowerCase()}">${r.rating}</td>`;
+   tb.appendChild(tr);
+ })
+ document.getElementById('out').hidden=false;
+});
+</script>
