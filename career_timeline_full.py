@@ -7,11 +7,11 @@ straight back to the browser.
 """
 from datetime import datetime, timedelta
 import pandas as pd
-from pyjhora.chart import Chart
-from pyjhora.dasha import VimsottariDasha, NarayanaDasha
-from pyjhora.ashtakavarga import YearlySarvashtakavarga
-from pyjhora.utils import Ayanamsa
-from pyjhora.yoga import YogaCategory
+from PyJHora.chart import Chart
+from PyJHora.dasha import VimsottariDasha, NarayanaDasha
+from PyJHora.ashtakavarga import YearlySarvashtakavarga
+from PyJHora.utils import Ayanamsa
+from PyJHora.yoga import YogaCategory
 import argparse
 
 # ── Weights & static thresholds ──────────────────────────────────────────────
