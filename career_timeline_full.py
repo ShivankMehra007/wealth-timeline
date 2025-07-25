@@ -23,13 +23,17 @@ import argparse
 from datetime import datetime, timedelta
 import pandas as pd
 
-# ── PyJHora imports (fixed paths) ────────────────────────────────────────────
-from jhora.horoscope.chart.charts import Chart
-from jhora.horoscope.chart.dhasa.graha.vimsottari import VimsottariDasha
-from jhora.horoscope.chart.dhasa.raasi.narayana import NarayanaDasha
+# ── PyJHora imports (corrected paths) ─────────────────────────────────────────
+from jhora.horoscope.chart.chart import Chart
+from jhora.horoscope.chart.dhasa.graha import vimsottari
+from jhora.horoscope.chart.dhasa.raasi import narayana
 from jhora.horoscope.chart.ashtakavarga import YearlySarvashtakavarga
 from jhora.horoscope.chart.yoga import YogaCategory
-from jhora import const  # for default ayanāṃśa
+from jhora import const                     # ayanāṃśa defaults
+
+# give the old class names so the rest of the file needs no edits
+VimsottariDasha = vimsottari.VimsottariDasha
+NarayanaDasha   = narayana.NarayanaDasha
 
 # ── Weights & static thresholds ──────────────────────────────────────────────
 WEALTH_LORD_WEIGHT   = 20
