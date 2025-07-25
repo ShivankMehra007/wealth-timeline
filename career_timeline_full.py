@@ -233,5 +233,48 @@ def main() -> None:
           .reset_index(drop=True).to_string(index=False))
     print(f"\nFull CSV saved → {out}")
 
+# ────────────────────────────────────────────────────────────────────────────
+#  Public helper  →  Flask expects this symbol
+# ────────────────────────────────────────────────────────────────────────────
+def timeline_from_args(
+        *,                       # keyword‑only for clarity
+        name: str,
+        date: str,
+        time: str,
+        lat: float,
+        lon: float,
+        tz: str | float = "+05:30"
+    ) -> pd.DataFrame:
+    """
+    Convenience wrapper so a web front‑end can call:
+
+        df = timeline_from_args(
+                 name="A P Test",
+                 date="1990‑01‑01",
+                 time="05:30",
+                 lat=13.0827, lon=80.2707, tz="+05:30")
+
+    Returns the same DataFrame the CLI prints and also writes to CSV.
+    """
+    dob = datetime.fromisoformat(f"{date}T{time}{tz}")
+    place = _build_place(name, lat, lon,
+                         float(tz) if isinstance(tz, (int, float)) else
+                         float(ZoneInfo(str(tz)).utcoffset(dob).total_seconds()/3600))
+    jd_birth = jutils.julian_day_number(
+        (dob.year, dob.month, dob.day),
+        (dob.hour, dob.minute, 0))
+    pp  = _planet_positions(jd_birth, place)
+    vim, nar = _dashas(pp, dob, place)
+    sav_df   = _sav_scores(jutils.get_house_planet_list_from_planet_positions(pp))
+
+    # Classify yogas
+    pos, neg = [], []
+    for y in jyoga.applicable_yogas_from_rasi_positions(pp):
+        (pos if y["category"] in POSITIVE_YOGA_CATS else
+         neg if y["category"] in NEGATIVE_YOGA_CATS else []).append(y)
+
+    return _rate_periods(vim, nar, pp, sav_df)
+
+
 if __name__ == "__main__":
     main()
