@@ -223,8 +223,6 @@ def _tree_to_df(tree: list[dict], system: str) -> pd.DataFrame:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-#  Replace the whole original _dashas() with THIS version
-# ────────────────────────────────────────────────────────────────────────────
 def _dashas(pp: list,
             dob: datetime,
             place: pdrik.Place,
@@ -232,67 +230,57 @@ def _dashas(pp: list,
             span: int = 62
            ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Return two DataFrames:
-        • vim_df → Vimśottarī (D‑1) with bhuktis
-        • nar_df → Nārāyaṇa (D‑10) with bhuktis
-    covering the interval  [dob + start_age  …  start_age + span]  years.
+    Build Vimśottarī (D‑1) and Nārāyaṇa (D‑10) daśā tables
+    covering  <dob + start_age  …  start_age + span>  years.
     """
 
     # ------------------------------------------------------------------ #
-    # 1. Build Vimśottarī list via the *real* high‑level helper
-    # ------------------------------------------------------------------ #
-    vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(
-        dob, place,
-        include_antardhasa=True,          # we want at least bhuktis
-        divisional_chart_factor=1         # D‑1
-    )
-    # vim_raw → [ [dasa,bhukti,start_iso,years], … ]
-
-    # ------------------------------------------------------------------ #
-    # 2. Build Nārāyaṇa list for D‑10 (divisional factor == 10)
-    # ------------------------------------------------------------------ #
-    nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
-        dob, place,
-        divisional_chart_factor=10,
-        include_antardhasa=True
-    )
-    # nar_raw has the same tuple shape
-
-    # ------------------------------------------------------------------ #
-    # 3. Helper: convert list‑of‑tuples → tidy DataFrame
-    # ------------------------------------------------------------------ #
-    def _to_df(raw, label):
-        recs = []
-        for tpl in raw:
-            if len(tpl) == 4:                 # (dasa, bhukti, start_iso, yrs)
-                dasa, bhukti, s_iso, yrs = tpl
-                level = "antara"              # bhukti level
-            else:                             # safety fallback
-                continue
-            start_dt = datetime.fromisoformat(s_iso)
-            end_dt   = start_dt + timedelta(days=yrs * 365.25)
-            recs.append(dict(
-                label = label,                # "vim" / "nar"
-                level = level,
-                lord  = dasa if label == "vim" else bhukti,  # ruler inside that system
-                start = start_dt,
-                end   = end_dt
-            ))
-        return pd.DataFrame(recs)
-
-    vim_df = _to_df(vim_raw, "vim")
-    nar_df = _to_df(nar_raw, "nar")
-
-    # ------------------------------------------------------------------ #
-    # 4. Trim to requested [win1, win2]    (same logic as before)
+    # 0.  Time‑window we’ll crop to
     # ------------------------------------------------------------------ #
     win1 = dob + timedelta(days=365.25 * start_age)
     win2 = win1 + timedelta(days=365.25 * span)
 
+    # ------------------------------------------------------------------ #
+    # 1.  Convert DOB → Julian‑day & drik.Date / time‑tuple formats
+    # ------------------------------------------------------------------ #
+    jd_birth = jutils.julian_day_number(
+        (dob.year, dob.month, dob.day),
+        (dob.hour, dob.minute, dob.second)
+    )
+    dob_date = pdrik.Date(dob.year, dob.month, dob.day)      # drik.Date
+    tob      = (dob.hour, dob.minute, dob.second)            # simple tuple
+
+    # ------------------------------------------------------------------ #
+    # 2.  Get raw period lists from the **real** helpers
+    # ------------------------------------------------------------------ #
+    vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(
+        jd_birth, place,
+        include_antardhasa=True,
+        divisional_chart_factor=1       # D‑1
+    )
+
+    nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
+        dob_date, tob, place,
+        divisional_chart_factor=10,     # D‑10
+        include_antardhasa=True
+    )
+
+    # vim_raw / nar_raw elements → (dasa, bhukti, iso_start, years)
+
+    # ------------------------------------------------------------------ #
+    # 3.  Flatten to DataFrames (reuse helper)
+    # ------------------------------------------------------------------ #
+    vim_df = _tree_to_df(vim_raw, "vim")
+    nar_df = _tree_to_df(nar_raw, "nar")
+
+    # ------------------------------------------------------------------ #
+    # 4.  Trim to requested window
+    # ------------------------------------------------------------------ #
     vim_df = vim_df[(vim_df.start >= win1) & (vim_df.start <= win2)]
     nar_df = nar_df[(nar_df.start >= win1) & (nar_df.start <= win2)]
 
     return vim_df, nar_df
+
 
 
 def main() -> None:
