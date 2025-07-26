@@ -205,27 +205,37 @@ def _rate_periods(vim: pd.DataFrame,
 # ── CLI glue ────────────────────────────────────────────────────────────────
 def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
     """
-    Accepts the period list from jhora dasha helpers and
-    returns a tidy DataFrame with columns:
-        label | level | lord | start | end
-    Mahā‑daśā rows only – scorer doesn’t need bhuktis here.
+    Normalise the period list from jhora’s helpers to a tidy DataFrame.
+
+    Keeps only mahā‑daśā rows (scorer doesn’t need bhuktis).
+    Columns:  label | level | lord | start | end
     """
     rows = []
     for rec in raw_list:
-        # Two common shapes:
-        #  [dasa, bhukti, "YYYY‑MM‑DD hh:mm"]
-        #  [dasa,         "YYYY‑MM‑DD hh:mm"]
+        # --- Unpack flexibly ------------------------------------------
         if len(rec) == 3:
-            dasa, _bhukti, start_s = rec
+            dasa, _bhukti, ts = rec
         elif len(rec) == 2:
-            dasa, start_s = rec
+            dasa, ts = rec
         else:
-            continue                       # skip malformed rows
+            continue                              # malformed
 
-        # start_s is always a *string* like "1917‑06‑10 00:00"
-        start_dt = datetime.fromisoformat(start_s.strip())
-        # crude—but scorer needs only midpoint: assume full period = 1 yr
-        end_dt   = start_dt + timedelta(days=365)
+        # --- Convert ts → datetime ------------------------------------
+        if isinstance(ts, datetime):
+            start_dt = ts
+        elif isinstance(ts, str):
+            start_dt = datetime.fromisoformat(ts.strip())
+        elif isinstance(ts, (int, float)):
+            y, m, d, fh = jutils.jd_to_gregorian(float(ts))
+            h = int(fh)
+            mi = int((fh - h) * 60)
+            s = int(round(((fh - h) * 60 - mi) * 60))
+            start_dt = datetime(y, m, d, h, mi, s)
+        else:
+            continue                              # unknown type
+
+        # crude 1‑year span (exact length unused by scorer)
+        end_dt = start_dt + timedelta(days=365)
 
         rows.append(dict(
             label = label,
@@ -236,6 +246,7 @@ def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
         ))
 
     return pd.DataFrame(rows)
+
 
 
 # ────────────────────────────────────────────────────────────────────────────
