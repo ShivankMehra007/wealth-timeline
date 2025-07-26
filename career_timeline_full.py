@@ -11,25 +11,22 @@ Public surface
 from __future__ import annotations
 
 import argparse
+import math
+import zoneinfo
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from typing import Iterable, Dict, List
+
 import pandas as pd
 
-# ── PyJHora core ────────────────────────────────────────────────────────────
+# ── PyJHora imports ──────────────────────────────────────────────────────
+from jhora.panchanga import drik as pdrik
+from jhora.horoscope.chart import charts as jd_charts
+from jhora.horoscope.chart import strength as jd_strength
+from jhora.horoscope.chart import ashtakavarga as jd_ashta
+from jhora.horoscope.dhasa import vimsottari as jd_vimsottari
+from jhora.horoscope.dhasa import narayana as jd_narayana
+from jhora import utils as jutils
 from jhora import const
-import jhora.utils as jutils                                 # ← utils.py ✔
-from jhora.panchanga import drik as pdrik                    # ← drik.py ✔
-
-# Horoscope helpers
-from jhora.horoscope.chart import charts as jd_charts        # ← charts.py ✔
-from jhora.horoscope.chart import house  as jd_house         # ← house.py ✔
-from jhora.horoscope.chart import strength as jd_strength    # ← strength.py ✔
-from jhora.horoscope.chart import ashtakavarga as jd_akv     # ← ashtakavarga.py ✔
-import jhora.horoscope.chart.yoga as jyoga
-
-# Dasha engines
-from jhora.horoscope.dhasa.graha import vimsottari as jd_vimsottari  # ← vimsottari.py ✔
-from jhora.horoscope.dhasa.raasi import narayana  as jd_narayana     # ← narayana.py ✔
 
 # ── heuristic weights ────────────────────────────────────────────────────
 WEALTH_LORD_WT, CAREER_LORD_WT = 20, 15
