@@ -53,6 +53,26 @@ LABELS: tuple[tuple[str, int], ...] = (
 # ════════════════════════════════════════════════════════════════════════
 # basic helpers
 # ════════════════════════════════════════════════════════════════════════
+def _to_datetime(val):
+    """Return a datetime from ISO string, (y,m,d) tuple, or JD>threshold."""
+    if isinstance(val, str):
+        try:
+            return datetime.fromisoformat(val.strip())
+        except ValueError:
+            return None
+    if isinstance(val, (tuple, list)) and len(val) >= 3:
+        try:
+            y, m, d = map(int, val[:3])
+            hh = int(val[3]) if len(val) > 3 else 0
+            mm = int(val[4]) if len(val) > 4 else 0
+            return datetime(y, m, d, hh, mm)
+        except Exception:
+            return None
+    if isinstance(val, (int, float)) and val > _JD_THRESHOLD:
+        y, m, d, fh = jutils.jd_to_gregorian(float(val))
+        return datetime(y, m, d, int(fh), int(round((fh % 1) * 60)))
+    return None
+
 def _build_place(name: str, lat: float, lon: float, offset_hrs: float) -> pdrik.Place:
     if not -90 <= lat <= 90:   raise ValueError("Latitude must be −90…+90")
     if not -180 <= lon <= 180: raise ValueError("Longitude must be −180…+180")
