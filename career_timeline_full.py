@@ -53,6 +53,8 @@ LABELS: tuple[tuple[str, int], ...] = (
 # ════════════════════════════════════════════════════════════════════════
 # basic helpers
 # ════════════════════════════════════════════════════════════════════════
+_JD_THRESHOLD = 1_720_000
+
 def _to_datetime(val):
     """Return a datetime from ISO string, (y,m,d) tuple, or JD>threshold."""
     if isinstance(val, str):
