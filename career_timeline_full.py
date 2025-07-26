@@ -218,7 +218,13 @@ def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
         elif len(rec) == 2:
             dasa, ts = rec
         else:
-            continue                              # malformed
+            continue                          # malformed → skip
+
+        # Guard: sometimes jhora returns (dasa, bhukti‑id, bhukti‑years)
+        # where ts == bhukti‑id (0‑8).  Skip those rows so we never
+        # try to convert a planet‑ID into a Julian date.
+        if isinstance(ts, int) and ts in range(9):
+            continue
 
         # --- Convert ts → datetime ------------------------------------
         if isinstance(ts, datetime):
