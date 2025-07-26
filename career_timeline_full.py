@@ -254,7 +254,10 @@ def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
             end   = end_dt
         ))
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+         rows,
+         columns=["label", "level", "lord", "start", "end"]  # <-- add this
+     )
 
 
 
