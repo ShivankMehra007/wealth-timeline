@@ -222,29 +222,33 @@ def _tree_to_df(tree: list[dict], system: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _dashas(pp: list, dob: datetime,
-            place: pdrik.Place, start_age: int = 18, span: int = 62):
-    """Return Vimśottarī & Nārāyaṇa dasha dataframes covering [start_age, start_age+span]."""
+def _dashas(pp: list,
+            dob: datetime,
+            place: pdrik.Place,
+            start_age: int = 18,
+            span: int = 62) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Build Vimśottarī (D‑1) and Nārāyaṇa (D‑10) daśā tables
+    and trim them to [start_age, start_age + span] years.
+    """
     win1 = dob + timedelta(days=365.25 * start_age)
     win2 = win1 + timedelta(days=365.25 * span)
 
-    #vim = jd_vimsottari.vimsottari_dhasa_table(              # → DataFrame
-    #    dob, place, divisional_chart_factor=1, include_antardhasa=True)
-    #nar = jd_narayana.narayana_dhasa_table(
-    #    dob, place, divisional_chart_factor=10, include_antardhasa=True)
-    
-    # Build the raw dasha “trees”
-vim_tree = jd_vimsottari.vimsottari_dhasa_from_planet_positions(
-    pp, dob)
-nar_tree = jd_narayana.narayana_dhasa_from_rasi_positions(
-    pp, varga_no=10)
+    # --- build “trees” ------------------------------------------------------
+    vim_tree = jd_vimsottari.vimsottari_dhasa_from_planet_positions(
+        pp, dob)
+    nar_tree = jd_narayana.narayana_dhasa_from_rasi_positions(
+        pp, varga_no=10)
 
-# Convert to DataFrames
-vim = _tree_to_df(vim_tree, "vim")
-nar = _tree_to_df(nar_tree, "nar")
+    # --- flatten to DataFrames ---------------------------------------------
+    vim_df = _tree_to_df(vim_tree, "vim")
+    nar_df = _tree_to_df(nar_tree, "nar")
 
-    return (vim[(vim.start >= win1) & (vim.start <= win2)],
-            nar[(nar.start >= win1) & (nar.start <= win2)])
+    # --- filter to requested window ----------------------------------------
+    vim_df = vim_df[(vim_df.start >= win1) & (vim_df.start <= win2)]
+    nar_df = nar_df[(nar_df.start >= win1) & (nar_df.start <= win2)]
+
+    return vim_df, nar_df        # ← no extra indent here
 
 def main() -> None:
     ap = argparse.ArgumentParser(
