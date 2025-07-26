@@ -48,7 +48,7 @@ from jhora.horoscope.chart import charts as jd_charts        # ← charts.py ✔
 from jhora.horoscope.chart import house  as jd_house         # ← house.py ✔
 from jhora.horoscope.chart import strength as jd_strength    # ← strength.py ✔
 from jhora.horoscope.chart import ashtakavarga as jd_akv     # ← ashtakavarga.py ✔
-from jhora.horoscope.chart.yoga import yoga as jyoga
+from jhora.horoscope.chart import yoga as jyoga
 
 # Dasha engines
 from jhora.horoscope.dhasa.graha import vimsottari as jd_vimsottari  # ← vimsottari.py ✔
