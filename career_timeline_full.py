@@ -129,28 +129,37 @@ def _sav_scores(house_to_planet_list: List[str]) -> Dict[int, int]:
 # ═════════════════════════════════════════════════════════════════════════
 # daśā helpers
 # ═════════════════════════════════════════════════════════════════════════
-def _tree_to_df(raw: Iterable, label: str) -> pd.DataFrame:
+def _tree_to_df(raw, label: str) -> pd.DataFrame:
+    """Flatten *any* dasha tree, keep only mahā‑daśā rows."""
     rows = []
-    for rec in raw:
-        if not rec:               # skip blank items
-            continue
-        lord = int(rec[0])
 
-        # find first element convertible to datetime
-        start_dt = None
-        for elem in rec[1:]:
-            start_dt = _to_datetime(elem)
-            if start_dt:
-                break
-        if start_dt is None:
-            continue                                   # give up on this row
+    def walk(node):
+        if not isinstance(node, (list, tuple)):
+            return
+        # leaf test: last element looks like a date/JD and first element is int‑ish
+        if len(node) >= 2:
+            start_dt = _to_datetime(node[-1])
+            if start_dt is not None:
+                try:
+                    lord = int(float(node[0]))
+                except Exception:      # noqa: BLE001
+                    lord = None
+                if lord is not None:
+                    rows.append(dict(system=label,
+                                     level="maha",
+                                     lord=lord,
+                                     start=start_dt,
+                                     end=start_dt + timedelta(days=365)))
+                    return
+        # otherwise recurse
+        for child in node:
+            walk(child)
 
-        rows.append(dict(system=label,
-                         level="maha",
-                         lord=lord,
-                         start=start_dt,
-                         end=start_dt + timedelta(days=365)))  # ≈ mahādaśā
-    return pd.DataFrame(rows)
+    walk(raw)
+    # drop duplicates just in case multiple leaves share the same start
+    return (pd.DataFrame(rows)
+              .drop_duplicates(subset=["lord", "start"])
+              .sort_values("start"))
 
 # ════════════════════════════════════════════════════════════════════════
 # 3)  _dashas  ←  **unchanged except it now trusts the safer parser**
