@@ -203,16 +203,45 @@ def _rate_periods(vim: pd.DataFrame,
     return pd.DataFrame(rows).sort_values("period")
 
 # ── CLI glue ────────────────────────────────────────────────────────────────
+def _tree_to_df(tree: list[dict], system: str) -> pd.DataFrame:
+    rows, labels = [], ["maha", "antara", "pratyantara", "sookshma", "prana"]
+
+    def _walk(branch, lvl=0):
+        for blk in branch:
+            rows.append(dict(
+                label=system[:3],
+                level=labels[lvl],
+                start=blk["start_datetime"],
+                end=blk["end_datetime"],
+                lord=blk["planet"],
+            ))
+            if blk.get("sub"):
+                _walk(blk["sub"], lvl + 1)
+
+    _walk(tree)
+    return pd.DataFrame(rows)
+
+
 def _dashas(pp: list, dob: datetime,
             place: pdrik.Place, start_age: int = 18, span: int = 62):
     """Return Vimśottarī & Nārāyaṇa dasha dataframes covering [start_age, start_age+span]."""
     win1 = dob + timedelta(days=365.25 * start_age)
     win2 = win1 + timedelta(days=365.25 * span)
 
-    vim = jd_vimsottari.vimsottari_dhasa_table(              # → DataFrame
-        dob, place, divisional_chart_factor=1, include_antardhasa=True)
-    nar = jd_narayana.narayana_dhasa_table(
-        dob, place, divisional_chart_factor=10, include_antardhasa=True)
+    #vim = jd_vimsottari.vimsottari_dhasa_table(              # → DataFrame
+    #    dob, place, divisional_chart_factor=1, include_antardhasa=True)
+    #nar = jd_narayana.narayana_dhasa_table(
+    #    dob, place, divisional_chart_factor=10, include_antardhasa=True)
+    
+    # Build the raw dasha “trees”
+vim_tree = jd_vimsottari.vimsottari_dhasa_from_planet_positions(
+    pp, dob)
+nar_tree = jd_narayana.narayana_dhasa_from_rasi_positions(
+    pp, varga_no=10)
+
+# Convert to DataFrames
+vim = _tree_to_df(vim_tree, "vim")
+nar = _tree_to_df(nar_tree, "nar")
 
     return (vim[(vim.start >= win1) & (vim.start <= win2)],
             nar[(nar.start >= win1) & (nar.start <= win2)])
