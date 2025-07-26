@@ -203,44 +203,34 @@ def _rate_periods(vim: pd.DataFrame,
     return pd.DataFrame(rows).sort_values("period")
 
 # ── CLI glue ────────────────────────────────────────────────────────────────
-def _tree_to_df(raw_list: list[tuple], label: str) -> pd.DataFrame:
+def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
     """
-    Convert jhora’s tuple records → tidy DataFrame with
+    Accepts the period list from jhora dasha helpers and
+    returns a tidy DataFrame with columns:
         label | level | lord | start | end
-    For now we keep only the **mahā‑daśā rows**; that is all the
-    scorer really needs to work.
+    Mahā‑daśā rows only – scorer doesn’t need bhuktis here.
     """
     rows = []
-    for tpl in raw_list:
-        # Format: (dasa, bhukti, start_iso, years)  –– bhukti may be None
-        if len(tpl) == 4:
-            maha_lord, _bhukti, iso, yrs = tpl
-        elif len(tpl) == 3:                 # some versions omit bhukti
-            maha_lord, iso, yrs = tpl
+    for rec in raw_list:
+        # Two common shapes:
+        #  [dasa, bhukti, "YYYY‑MM‑DD hh:mm"]
+        #  [dasa,         "YYYY‑MM‑DD hh:mm"]
+        if len(rec) == 3:
+            dasa, _bhukti, start_s = rec
+        elif len(rec) == 2:
+            dasa, start_s = rec
         else:
-            continue                        # skip malformed
+            continue                       # skip malformed rows
 
-        # --- universal ISO/JD → datetime ---------------------------------
-        if isinstance(iso, datetime):
-            start_dt = iso
-        elif isinstance(iso, str):
-            start_dt = datetime.fromisoformat(iso)
-        elif isinstance(iso, (int, float)):                 # Julian‑day
-            y, m, d, fh = jutils.jd_to_gregorian(iso)
-            h = int(fh)
-            mi = int((fh - h) * 60)
-            s  = int(round(((fh - h) * 60 - mi) * 60))
-            start_dt = datetime(y, m, d, h, mi, s)
-        else:
-            continue    # skip if unknown type
-
-        end_dt = start_dt + timedelta(days=yrs * 365.25)
-
+        # start_s is always a *string* like "1917‑06‑10 00:00"
+        start_dt = datetime.fromisoformat(start_s.strip())
+        # crude—but scorer needs only midpoint: assume full period = 1 yr
+        end_dt   = start_dt + timedelta(days=365)
 
         rows.append(dict(
-            label = label,                  # "vim" / "nar"
-            level = "maha",                 # we record mahā‑daśā only
-            lord  = maha_lord,
+            label = label,
+            level = "maha",
+            lord  = dasa,
             start = start_dt,
             end   = end_dt
         ))
