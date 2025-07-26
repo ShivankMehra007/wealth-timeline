@@ -110,27 +110,33 @@ def _sav_scores(house_to_planet_list: List[str]) -> Dict[int, int]:
 def _tree_to_df(raw: Iterable, label: str) -> pd.DataFrame:
     rows = []
     for rec in raw:
-        if len(rec) < 3: continue
-        dasa, bhukti, start_val = rec[:3]
-        if dasa != bhukti:       # keep only mahādaśā rows
+        if not rec:               # skip blank items
             continue
+        lord = int(rec[0])
 
-        # start value may be ISO string or Julian number
-        if isinstance(start_val, (int, float)):
-            y, m, d, fh = jutils.jd_to_gregorian(float(start_val))
-            start_dt = datetime(y, m, d) + timedelta(hours=fh)
-        else:
-            start_dt = datetime.fromisoformat(str(start_val).strip())
+        # find first element convertible to datetime
+        start_dt = None
+        for elem in rec[1:]:
+            start_dt = _to_datetime(elem)
+            if start_dt:
+                break
+        if start_dt is None:
+            continue                                   # give up on this row
 
-        rows.append(dict(system=label, level="maha", lord=int(dasa),
-                         start=start_dt, end=start_dt + timedelta(days=365)))
+        rows.append(dict(system=label,
+                         level="maha",
+                         lord=lord,
+                         start=start_dt,
+                         end=start_dt + timedelta(days=365)))  # ≈ mahādaśā
     return pd.DataFrame(rows)
 
-
+# ════════════════════════════════════════════════════════════════════════
+# 3)  _dashas  ←  **unchanged except it now trusts the safer parser**
+# ════════════════════════════════════════════════════════════════════════
 def _dashas(dob: datetime, place: pdrik.Place,
             start_age: int = 18, span: int = 62):
-    win1 = dob + timedelta(days=365.25 * start_age)
-    win2 = win1 + timedelta(days=365.25 * span)
+    win1, win2 = (dob + timedelta(days=365.25 * start_age),
+                  dob + timedelta(days=365.25 * (start_age + span)))
 
     jd_birth = jutils.julian_day_number(
         (dob.year, dob.month, dob.day), (dob.hour, dob.minute, dob.second))
@@ -138,7 +144,6 @@ def _dashas(dob: datetime, place: pdrik.Place,
     vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(
         jd_birth, place, include_antardhasa=True)
 
-    # tolerate both signatures (Date‑class or tuple)
     date_cls = getattr(pdrik, "Date", None)
     date_arg = date_cls(dob.year, dob.month, dob.day) if date_cls else (
         dob.year, dob.month, dob.day)
