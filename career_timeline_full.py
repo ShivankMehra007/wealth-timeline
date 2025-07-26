@@ -16,6 +16,8 @@ import zoneinfo
 from datetime import datetime, timedelta
 from typing import Iterable, Dict, List
 
+import re
+
 import pandas as pd
 
 # ── PyJHora core ────────────────────────────────────────────────────────────
@@ -52,21 +54,38 @@ LABELS: tuple[tuple[str, int], ...] = (
 # basic helpers
 # ════════════════════════════════════════════════════════════════════════
 def _build_place(name: str, lat: float, lon: float, offset_hrs: float) -> pdrik.Place:
-    if not -90.0 <= lat <= 90.0:
-        raise ValueError("Latitude must be −90…+90 °")
-    if not -180.0 <= lon <= 180.0:
-        raise ValueError("Longitude must be −180…+180 °")
+    if not -90 <= lat <= 90:   raise ValueError("Latitude must be −90…+90")
+    if not -180 <= lon <= 180: raise ValueError("Longitude must be −180…+180")
     return pdrik.Place(name, lat, lon, float(offset_hrs))
 
 
 def _tz_to_offset_hours(tz_val: str | float | int, ref_dt: datetime) -> float:
-    if isinstance(tz_val, (float, int)):
+    """Return offset in *hours* from numeric, '+HH:MM', or IANA zone."""
+    if isinstance(tz_val, (int, float)):
         return float(tz_val)
+
+    tz_str = str(tz_val).strip()
+
+    # 1) plain numeric string ('5.5', '-3')
     try:
-        return float(tz_val)  # handles "+05.5"
+        return float(tz_str)
     except ValueError:
-        z = zoneinfo.ZoneInfo(str(tz_val))
-        return z.utcoffset(ref_dt).total_seconds() / 3600.0
+        pass
+
+    # 2) signed hours:minutes  ('+05:30', '-07:45')
+    m = re.fullmatch(r'([+-])?(\d{1,2}):([0-5]\d)', tz_str)
+    if m:
+        sign = -1 if m.group(1) == '-' else 1
+        hrs  = int(m.group(2))
+        mins = int(m.group(3))
+        return sign * (hrs + mins / 60)
+
+    # 3) assume IANA name
+    try:
+        z = zoneinfo.ZoneInfo(tz_str)
+        return z.utcoffset(ref_dt).total_seconds() / 3600
+    except Exception as e:                       # noqa: BLE001
+        raise ValueError(f"Unsupported time‑zone value '{tz_val}'") from e
 
 
 def _planet_positions(jd: float, place: pdrik.Place):
@@ -77,58 +96,61 @@ def _sign_of_longitude(lon: float) -> int:
     return int(lon // 30) % 12
 
 
-# ════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════
 # Sarva‑aṣṭakavarga
-# ════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════
 def _sav_scores(house_to_planet_list: List[str]) -> Dict[int, int]:
     _binna, sav_totals, _ = jd_ashta.get_ashtaka_varga(house_to_planet_list)
     return {i + 1: sav_totals[i] for i in range(12)}
 
 
-# ════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════
 # daśā helpers
-# ════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════
 def _tree_to_df(raw: Iterable, label: str) -> pd.DataFrame:
     rows = []
-    for dasa_lord, bhukti_lord, start_str in raw:
-        if dasa_lord != bhukti_lord:            # keep only mahā‑daśā rows
+    for rec in raw:
+        if len(rec) < 3: continue
+        dasa, bhukti, start_val = rec[:3]
+        if dasa != bhukti:       # keep only mahādaśā rows
             continue
-        try:
-            start_dt = datetime.fromisoformat(start_str.strip())
-        except Exception:
-            continue
-        rows.append(dict(system=label,
-                         level="maha",
-                         lord=int(dasa_lord),
-                         start=start_dt,
-                         end=start_dt + timedelta(days=365)))  # ≈1 year
+
+        # start value may be ISO string or Julian number
+        if isinstance(start_val, (int, float)):
+            y, m, d, fh = jutils.jd_to_gregorian(float(start_val))
+            start_dt = datetime(y, m, d) + timedelta(hours=fh)
+        else:
+            start_dt = datetime.fromisoformat(str(start_val).strip())
+
+        rows.append(dict(system=label, level="maha", lord=int(dasa),
+                         start=start_dt, end=start_dt + timedelta(days=365)))
     return pd.DataFrame(rows)
 
 
 def _dashas(dob: datetime, place: pdrik.Place,
-            start_age: int = 18, span_years: int = 62):
+            start_age: int = 18, span: int = 62):
     win1 = dob + timedelta(days=365.25 * start_age)
-    win2 = win1 + timedelta(days=365.25 * span_years)
+    win2 = win1 + timedelta(days=365.25 * span)
 
     jd_birth = jutils.julian_day_number(
-        (dob.year, dob.month, dob.day),
-        (dob.hour, dob.minute, dob.second))
+        (dob.year, dob.month, dob.day), (dob.hour, dob.minute, dob.second))
 
     vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(
         jd_birth, place, include_antardhasa=True)
+
+    # tolerate both signatures (Date‑class or tuple)
+    date_cls = getattr(pdrik, "Date", None)
+    date_arg = date_cls(dob.year, dob.month, dob.day) if date_cls else (
+        dob.year, dob.month, dob.day)
+
     nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
-        (dob.year, dob.month, dob.day),
-        (dob.hour, dob.minute, dob.second),
-        place,
-        divisional_chart_factor=10,
-        include_antardhasa=True)
+        date_arg, (dob.hour, dob.minute, dob.second), place,
+        divisional_chart_factor=10, include_antardhasa=True)
 
     vim = _tree_to_df(vim_raw, "vim")
     nar = _tree_to_df(nar_raw, "nar")
-
-    vim = vim[(vim.start >= win1) & (vim.start <= win2)]
-    nar = nar[(nar.start >= win1) & (nar.start <= win2)]
-    return vim, nar
+    return (vim[(win1 <= vim.start) & (vim.start <= win2)],
+            nar[(win1 <= nar.start) & (nar.start <= win2)])
 
 
 # ════════════════════════════════════════════════════════════════════════
