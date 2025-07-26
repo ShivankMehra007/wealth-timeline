@@ -232,10 +232,13 @@ def _tree_to_df(raw_list: list, label: str) -> pd.DataFrame:
         elif isinstance(ts, str):
             start_dt = datetime.fromisoformat(ts.strip())
         elif isinstance(ts, (int, float)):
+            # Reject obviously invalid “timestamp” values
+            if ts < 1_000_000:        # not a real Julian day → bad row
+                continue
             y, m, d, fh = jutils.jd_to_gregorian(float(ts))
-            h = int(fh)
+            h  = int(fh)
             mi = int((fh - h) * 60)
-            s = int(round(((fh - h) * 60 - mi) * 60))
+            s  = int(round(((fh - h) * 60 - mi) * 60))
             start_dt = datetime(y, m, d, h, mi, s)
         else:
             continue                              # unknown type
