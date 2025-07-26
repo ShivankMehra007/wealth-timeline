@@ -76,6 +76,26 @@ LABELS = (
 )
 
 # ── Utilities ───────────────────────────────────────────────────────────────
+def _tz_to_offset_hours(tz_val: str | float | int, on_dt: datetime) -> float:
+    """
+    Return numeric UTC offset (+h) from user‑supplied tz parameter.
+
+        • IANA zone id  → use ZoneInfo
+        • “+05:30”      → parse manually
+        • 5 or -3.5     → already numeric
+    """
+    if isinstance(tz_val, (int, float)):
+        return float(tz_val)
+
+    tz_s = str(tz_val).strip()
+    if tz_s.startswith(("+", "-")):               # raw offset
+        hh, mm = (tz_s[1:].split(":") + ["0"])[:2]
+        sign   = 1 if tz_s[0] == "+" else -1
+        return sign * (int(hh) + int(mm)/60)
+
+    # Otherwise assume IANA name
+    return ZoneInfo(tz_s).utcoffset(on_dt).total_seconds() / 3600
+
 def _build_place(label: str, lat: float, lon: float, tz_hrs: float) -> pdrik.Place:
     """Return a `drik.Place` struct for the birth location."""
     return pdrik.Place(label, lat, lon, tz_hrs)
@@ -258,9 +278,8 @@ def timeline_from_args(
     Returns the same DataFrame the CLI prints and also writes to CSV.
     """
     dob = datetime.fromisoformat(f"{date}T{time}{tz}")
-    place = _build_place(name, lat, lon,
-                         float(tz) if isinstance(tz, (int, float)) else
-                         float(ZoneInfo(str(tz)).utcoffset(dob).total_seconds()/3600))
+    offset_hours = _tz_to_offset_hours(tz, dob)
+    place = _build_place(name, lat, lon, offset_hours)
     jd_birth = jutils.julian_day_number(
         (dob.year, dob.month, dob.day),
         (dob.hour, dob.minute, 0))
