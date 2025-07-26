@@ -258,27 +258,28 @@ def main() -> None:
 #  Public helper  →  Flask expects this symbol
 # ────────────────────────────────────────────────────────────────────────────
 def timeline_from_args(
-        *,                       # keyword‑only for clarity
-        name: str,
-        date: str,
-        time: str,
-        lat: float,
-        lon: float,
+        *, name: str, date: str, time: str,
+        lat, lon,                    # may arrive as str
         tz: str | float = "+05:30"
     ) -> pd.DataFrame:
-    """
-    Convenience wrapper so a web front‑end can call:
 
-        df = timeline_from_args(
-                 name="A P Test",
-                 date="1990‑01‑01",
-                 time="05:30",
-                 lat=13.0827, lon=80.2707, tz="+05:30")
+    # 1.  Normalise numeric primitives  -------------------------------
+    lat = float(lat)
+    lon = float(lon)
 
-    Returns the same DataFrame the CLI prints and also writes to CSV.
-    """
-    dob = datetime.fromisoformat(f"{date}T{time}{tz}")
-    offset_hours = _tz_to_offset_hours(tz, dob)
+    # if tz came as "+05:30" keep it as str; if "5.5" or 5.5 → float
+    tz_val = tz
+    try:
+        tz_val = float(tz)           # works for "5.5" or 5.5
+    except ValueError:
+        tz_val = str(tz).strip()     # keep "+05:30" / "Asia/Kolkata"
+
+    dob = datetime.fromisoformat(f"{date}T{time}{tz_val if isinstance(tz_val, str) else ''}")
+
+    # 2.  Convert tz into hours offset -------------------------------
+    offset_hours = _tz_to_offset_hours(tz_val, dob)
+
+    # 3.  Build Place with correct numeric args ----------------------
     place = _build_place(name, lat, lon, offset_hours)
     jd_birth = jutils.julian_day_number(
         (dob.year, dob.month, dob.day),
