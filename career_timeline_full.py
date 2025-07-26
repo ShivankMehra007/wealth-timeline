@@ -203,22 +203,34 @@ def _rate_periods(vim: pd.DataFrame,
     return pd.DataFrame(rows).sort_values("period")
 
 # ── CLI glue ────────────────────────────────────────────────────────────────
-def _tree_to_df(tree: list[dict], system: str) -> pd.DataFrame:
-    rows, labels = [], ["maha", "antara", "pratyantara", "sookshma", "prana"]
+def _tree_to_df(raw_list: list[tuple], label: str) -> pd.DataFrame:
+    """
+    Convert jhora’s tuple records → tidy DataFrame with
+        label | level | lord | start | end
+    For now we keep only the **mahā‑daśā rows**; that is all the
+    scorer really needs to work.
+    """
+    rows = []
+    for tpl in raw_list:
+        # Format: (dasa, bhukti, start_iso, years)  –– bhukti may be None
+        if len(tpl) == 4:
+            maha_lord, _bhukti, iso, yrs = tpl
+        elif len(tpl) == 3:                 # some versions omit bhukti
+            maha_lord, iso, yrs = tpl
+        else:
+            continue                        # skip malformed
 
-    def _walk(branch, lvl=0):
-        for blk in branch:
-            rows.append(dict(
-                label=system[:3],
-                level=labels[lvl],
-                start=blk["start_datetime"],
-                end=blk["end_datetime"],
-                lord=blk["planet"],
-            ))
-            if blk.get("sub"):
-                _walk(blk["sub"], lvl + 1)
+        start_dt = datetime.fromisoformat(iso)
+        end_dt   = start_dt + timedelta(days=yrs * 365.25)
 
-    _walk(tree)
+        rows.append(dict(
+            label = label,                  # "vim" / "nar"
+            level = "maha",                 # we record mahā‑daśā only
+            lord  = maha_lord,
+            start = start_dt,
+            end   = end_dt
+        ))
+
     return pd.DataFrame(rows)
 
 
