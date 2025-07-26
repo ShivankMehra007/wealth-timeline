@@ -220,8 +220,22 @@ def _tree_to_df(raw_list: list[tuple], label: str) -> pd.DataFrame:
         else:
             continue                        # skip malformed
 
-        start_dt = datetime.fromisoformat(iso)
-        end_dt   = start_dt + timedelta(days=yrs * 365.25)
+        # --- universal ISO/JD → datetime ---------------------------------
+        if isinstance(iso, datetime):
+            start_dt = iso
+        elif isinstance(iso, str):
+            start_dt = datetime.fromisoformat(iso)
+        elif isinstance(iso, (int, float)):                 # Julian‑day
+            y, m, d, fh = jutils.jd_to_gregorian(iso)
+            h = int(fh)
+            mi = int((fh - h) * 60)
+            s  = int(round(((fh - h) * 60 - mi) * 60))
+            start_dt = datetime(y, m, d, h, mi, s)
+        else:
+            continue    # skip if unknown type
+
+        end_dt = start_dt + timedelta(days=yrs * 365.25)
+
 
         rows.append(dict(
             label = label,                  # "vim" / "nar"
