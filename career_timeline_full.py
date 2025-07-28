@@ -363,9 +363,15 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     # Prepare divisional charts once (sign lists)
     vargas = {
-        "D2": jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=2),
-        "D10": jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=10),
-        "D11": jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=11),
+        "D2": jutils.get_house_planet_list_from_planet_positions(
+            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=2)
+        ),
+        "D10": jutils.get_house_planet_list_from_planet_positions(
+            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=10)
+        ),
+        "D11": jutils.get_house_planet_list_from_planet_positions(
+            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=11)
+        ),
     }
 
     vim_df, nar_df = _dashas(dob, place)
