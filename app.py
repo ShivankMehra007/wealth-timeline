@@ -1,18 +1,24 @@
-from flask import Flask, render_template, request, jsonify
+# app.py  – only the /timeline route is shown
+
+from flask import Flask, request, jsonify
 from career_timeline_full import timeline_from_args
 
 app = Flask(__name__)
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/timeline", methods=["POST"])
+@app.post("/timeline")
 def timeline():
-    data = request.get_json()
-    # timeline_from_args returns list[dict] already
-    out = timeline_from_args(**data)
-    return jsonify(out)
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    """
+    Accepts JSON like:
+      {
+        "name": "Alice",
+        "date": "1990-05-12",
+        "time": "14:30",
+        "lat": 28.61,
+        "lon": 77.23,
+        "tz": "+05:30"
+      }
+    and returns a list‑of‑dict rows ready for the front‑end.
+    """
+    data = request.get_json(force=True) or {}
+    df = timeline_from_args(**data)        # ← DataFrame
+    return jsonify(df.to_dict(orient="records"))  # ⇢ JSON‑serialisable
