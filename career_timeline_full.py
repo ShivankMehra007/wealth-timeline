@@ -164,9 +164,15 @@ def _tree_to_df(raw, label: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=cols) if rows else pd.DataFrame(columns=cols)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# daśā helpers
+# ═══════════════════════════════════════════════════════════════════════════
 def _dashas(dob: datetime, place: pdrik.Place,
             start_age: int = 18, span: int = 62):
-    """Return vimsottari & narayana mahā-daśās inside the requested window."""
+    """
+    Return Vimsottari & Narayana mahā‑daśās whose starts fall in the
+    window [dob+start_age, dob+start_age+span).
+    """
     win1 = dob + timedelta(days=365.25 * start_age)
     win2 = dob + timedelta(days=365.25 * (start_age + span))
 
@@ -175,24 +181,27 @@ def _dashas(dob: datetime, place: pdrik.Place,
         (dob.hour, dob.minute, dob.second)
     )
 
-    # ── Vimsottari (graha) daśā tree ────────────────────────────────────────
+    # ── Vimsottari (graha) timeline ─────────────────────────────────────────
     vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(jd_birth, place)
 
-    # ── Narayana (rāśi) daśā tree – D10 (career) variant ────────────────────
+    # ── Narayana (rāśi) timeline – D10 variant ─────────────────────────────
     nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
-        jd_birth,                             # jd_at_dob
-        place,
-        (dob.year, dob.month, dob.day),       # dob tuple
-        years_from_dob=0,
-        divisional_chart_factor=10            # D10
+        jd_birth,                          # jd_at_dob
+        place,                             # place struct
+        (dob.year, dob.month, dob.day),    # dob tuple
+        0,                                 # years_from_dob  (0 = divisional only)
+        10                                 # divisional_chart_factor  (D‑10)
     )
 
-    vim = _tree_to_df(vim_raw, "vim")
-    nar = _tree_to_df(nar_raw, "nar")
+    # flatten both trees to DataFrames with start/end datetimes
+    vim_df = _tree_to_df(vim_raw, "vim")
+    nar_df = _tree_to_df(nar_raw, "nar")
 
-    vim = vim[(win1 <= vim.start) & (vim.start <= win2)]
-    nar = nar[(win1 <= nar.start) & (nar.start <= win2)]
-    return vim, nar
+    # keep rows whose **start** lies inside the viewing window
+    vim_df = vim_df[(win1 <= vim_df.start) & (vim_df.start <= win2)]
+    nar_df = nar_df[(win1 <= nar_df.start) & (nar_df.start <= win2)]
+    return vim_df, nar_df
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════
