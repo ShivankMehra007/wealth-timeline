@@ -130,36 +130,51 @@ def _sav_scores(house_to_planet_list: List[str]) -> Dict[int, int]:
 # daśā helpers
 # ═════════════════════════════════════════════════════════════════════════
 def _tree_to_df(raw, label: str) -> pd.DataFrame:
-    """Flatten *any* dasha tree, keep only mahā‑daśā rows."""
-    rows = []
+    """Flatten any daśā tree and return **only** mahā‑daśā rows.
+
+    The function is resilient to:
+      • deeply nested list / tuple structures
+      • mixed start‑date formats (ISO string, (y,m,d), or Julian‑day)
+      • cases where *no* mahā‑daśā rows are found (returns empty DF
+        with the expected columns so downstream code never KeyErrors).
+    """
+    rows: list[dict] = []
 
     def walk(node):
         if not isinstance(node, (list, tuple)):
             return
-        # leaf test: last element looks like a date/JD and first element is int‑ish
+        # potential leaf: last item looks like a date & first item int‑ish
         if len(node) >= 2:
             start_dt = _to_datetime(node[-1])
             if start_dt is not None:
                 try:
                     lord = int(float(node[0]))
-                except Exception:      # noqa: BLE001
+                except Exception:                             # noqa: BLE001
                     lord = None
                 if lord is not None:
-                    rows.append(dict(system=label,
-                                     level="maha",
-                                     lord=lord,
-                                     start=start_dt,
-                                     end=start_dt + timedelta(days=365)))
+                    rows.append(
+                        dict(system=label,
+                             level="maha",
+                             lord=lord,
+                             start=start_dt,
+                             end=start_dt + timedelta(days=365))  # ≈1 yr span
+                    )
                     return
-        # otherwise recurse
+        # recurse through children
         for child in node:
             walk(child)
 
     walk(raw)
-    # drop duplicates just in case multiple leaves share the same start
-    return (pd.DataFrame(rows)
+
+    # guarantee the expected schema even when `rows` is empty
+    cols = ["system", "level", "lord", "start", "end"]
+    if not rows:
+        return pd.DataFrame(columns=cols)
+
+    return (pd.DataFrame(rows, columns=cols)
               .drop_duplicates(subset=["lord", "start"])
               .sort_values("start"))
+
 
 # ════════════════════════════════════════════════════════════════════════
 # 3)  _dashas  ←  **unchanged except it now trusts the safer parser**
