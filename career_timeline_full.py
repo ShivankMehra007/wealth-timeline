@@ -25,8 +25,8 @@ from jhora.panchanga import drik as pdrik
 from jhora.horoscope.chart import charts as jd_charts
 from jhora.horoscope.chart import strength as jd_strength
 from jhora.horoscope.chart import ashtakavarga as jd_ashta
-from jhora.horoscope.dhasa import vimsottari as jd_vimsottari
-from jhora.horoscope.dhasa import narayana   as jd_narayana
+from jhora.horoscope.dhasa.graha import vimsottari as jd_vimsottari
+from jhora.horoscope.dhasa.raasi import narayana   as jd_narayana
 
 # ─── heuristic weights & labels ─────────────────────────────────────────────
 WEALTH_LORD_WT, CAREER_LORD_WT = 20, 15
