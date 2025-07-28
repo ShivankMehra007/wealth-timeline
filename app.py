@@ -1,9 +1,11 @@
-# app.py  – only the /timeline route is shown
-
 from flask import Flask, request, jsonify
 from career_timeline_full import timeline_from_args
 
 app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 @app.post("/timeline")
 def timeline():
@@ -22,3 +24,6 @@ def timeline():
     data = request.get_json(force=True) or {}
     df = timeline_from_args(**data)        # ← DataFrame
     return jsonify(df.to_dict(orient="records"))  # ⇢ JSON‑serialisable
+	
+if __name__ == "__main__":
+    app.run(debug=True)
