@@ -185,13 +185,14 @@ def _dashas(dob: datetime, place: pdrik.Place,
     vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(jd_birth, place)
 
     # ── Narayana (rāśi) timeline – D10 variant ─────────────────────────────
+    
     nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
-        jd_birth,                          # jd_at_dob
-        place,                             # place struct
-        (dob.year, dob.month, dob.day),    # dob tuple
-        0,                                 # years_from_dob  (0 = divisional only)
-        10                                 # divisional_chart_factor  (D‑10)
+    (dob.year, dob.month, dob.day),        # dob tuple
+    (dob.hour, dob.minute, dob.second),    # tob tuple
+    place,                                 # Place struct
+    divisional_chart_factor=10             # D‑10 for career
     )
+
 
     # flatten both trees to DataFrames with start/end datetimes
     vim_df = _tree_to_df(vim_raw, "vim")
