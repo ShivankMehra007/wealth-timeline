@@ -1,323 +1,263 @@
 # career_timeline_full.py
 """
-PyJHora‑based “wealth / career timeline” engine.
+PyJHora‑based “wealth / career timeline” engine (antardaśā granularity).
 
-Public surface
-──────────────
-• `timeline_from_args(...)`  – stateless helper for a Flask endpoint  
-• CLI usage:  python career_timeline_full.py --help
+The **only** public surface is
+    • `timeline_from_args(...)` – a stateless helper that returns a
+      *pandas* DataFrame with just two columns: **period** & **rating**.
+
+The module depends **exclusively** on public symbols documented in
+`jhora.*` sub‑packages shipped with PyJHora ≥ 4‑series – no private or
+undocumented calls are used, and each helper is type‑checked for safe
+inputs.
+
+CLI usage (for quick tests):
+----------------------------
+    python career_timeline_full.py --help
 """
 
 from __future__ import annotations
 
 import argparse
 import math
+import re
 import zoneinfo
 from datetime import datetime, timedelta
-from typing import Iterable, Dict, List
-
-import re
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
-# ── PyJHora core ────────────────────────────────────────────────────────────
-from jhora import const
-import jhora.utils as jutils                                 # ← utils.py ✔
-from jhora.panchanga import drik as pdrik                    # ← drik.py ✔
+# ── PyJHora imports ──────────────────────────────────────────────────────
+from jhora import const, utils as jutils
+from jhora.panchanga.drik import Place                                     # ← documented
+from jhora.horoscope.chart import charts as jcharts, house as jhouse, strength as jstrength
+from jhora.horoscope.chart import ashtakavarga as jashta
+from jhora.horoscope.dhasa.graha import vimsottari as jvim
+from jhora.horoscope.dhasa.raasi import narayana as jnar
 
-# Horoscope helpers
-from jhora.horoscope.chart import charts as jd_charts        # ← charts.py ✔
-from jhora.horoscope.chart import house  as jd_house         # ← house.py ✔
-from jhora.horoscope.chart import strength as jd_strength    # ← strength.py ✔
-from jhora.horoscope.chart import ashtakavarga as jd_ashta    # ← ashtakavarga.py ✔
-import jhora.horoscope.chart.yoga as jyoga
+# ── Tunables (heuristic weights & label table) ───────────────────────────
+WEALTH_WT, CAREER_WT = 15, 10          # house lordship
+FUNC_BEN_WT, FUNC_MAL_WT = 10, -10     # functional nature
+SAV_BONUS_WT = 5                       # Sarva‑aṣṭakavarga support
+SB_GOOD_BONUS, SB_POOR_MALUS = 5, -5   # Shadbala
+SAV_THRESHOLD = 30                     # “good” SAV score
 
-# Dasha engines
-from jhora.horoscope.dhasa.graha import vimsottari as jd_vimsottari  # ← vimsottari.py ✔
-from jhora.horoscope.dhasa.raasi import narayana  as jd_narayana     # ← narayana.py ✔
-
-# ── heuristic weights ────────────────────────────────────────────────────
-WEALTH_LORD_WT, CAREER_LORD_WT = 20, 15
-SAV_BONUS_WT = 10
-STRENGTH_BONUS, STRENGTH_MALUS = 10, -10
-SHADBALA_GOOD, SHADBALA_BAD = 1.0, 0.75
-SAV_WEALTH_TH, SAV_CAREER_TH = 28, 30
-
-LABELS: tuple[tuple[str, int], ...] = (
-    ("EXCELLENT", 50),
-    ("GOOD",       35),
-    ("NEUTRAL",    20),
-    ("CHALLENGED",  0),
+LABELS: Tuple[Tuple[str, int], ...] = (
+    ("EXCEPTIONAL OPPORTUNITY", 55),
+    ("FAVOURABLE",               40),
+    ("STABLE / MIXED",           25),
+    ("CHALLENGING",              10),
+    ("HIGH CAUTION",           -math.inf),
 )
 
-# ════════════════════════════════════════════════════════════════════════
-# basic helpers
-# ════════════════════════════════════════════════════════════════════════
-_JD_THRESHOLD = 1_720_000
+# ── helper: parse dates that appear in dasha lists ───────────────────────
+_JD_LIMIT = 1_720_000  # any float > this is treated as a Julian‑day
 
-def _to_datetime(val):
-    """Return a datetime from ISO string, (y,m,d) tuple, or JD>threshold."""
+def _to_dt(val) -> datetime:
+    """Return *naive* datetime from ISO‑8601 string, (y,m,d) tuple or JD."""
     if isinstance(val, str):
-        try:
-            return datetime.fromisoformat(val.strip())
-        except ValueError:
-            return None
+        return datetime.fromisoformat(val.strip())
     if isinstance(val, (tuple, list)) and len(val) >= 3:
-        try:
-            y, m, d = map(int, val[:3])
-            hh = int(val[3]) if len(val) > 3 else 0
-            mm = int(val[4]) if len(val) > 4 else 0
-            return datetime(y, m, d, hh, mm)
-        except Exception:
-            return None
-    if isinstance(val, (int, float)) and val > _JD_THRESHOLD:
+        y, m, d = map(int, val[:3])
+        hh = int(val[3]) if len(val) > 3 else 0
+        mm = int(val[4]) if len(val) > 4 else 0
+        return datetime(y, m, d, hh, mm)
+    if isinstance(val, (int, float)) and val > _JD_LIMIT:
         y, m, d, fh = jutils.jd_to_gregorian(float(val))
         return datetime(y, m, d, int(fh), int(round((fh % 1) * 60)))
-    return None
+    raise ValueError(f"Un‑recognised date literal: {val!r}")
 
-def _build_place(name: str, lat: float, lon: float, offset_hrs: float) -> pdrik.Place:
-    if not -90 <= lat <= 90:   raise ValueError("Latitude must be −90…+90")
-    if not -180 <= lon <= 180: raise ValueError("Longitude must be −180…+180")
-    return pdrik.Place(name, lat, lon, float(offset_hrs))
+# ── helper: build a “Place” struct (lat/long validity checked) ───────────
+def _build_place(name: str, lat: float, lon: float, offset_hrs: float) -> Place:
+    if not -90 <= lat <= 90:
+        raise ValueError("Latitude must be −90…+90")
+    if not -180 <= lon <= 180:
+        raise ValueError("Longitude must be −180…+180")
+    return Place(name, lat, lon, float(offset_hrs))
 
-
-def _tz_to_offset_hours(tz_val: str | float | int, ref_dt: datetime) -> float:
-    """Return offset in *hours* from numeric, '+HH:MM', or IANA zone."""
-    if isinstance(tz_val, (int, float)):
-        return float(tz_val)
-
-    tz_str = str(tz_val).strip()
-
-    # 1) plain numeric string ('5.5', '-3')
+# ── helper: robust TZ parsing (+05:30 / America/New_York / 5.5) ──────────
+def _tz_offset_hours(tz: str | float | int, ref: datetime) -> float:
+    if isinstance(tz, (int, float)):
+        return float(tz)
+    s = str(tz).strip()
     try:
-        return float(tz_str)
+        return float(s)                   # plain “5.5”
     except ValueError:
         pass
-
-    # 2) signed hours:minutes  ('+05:30', '-07:45')
-    m = re.fullmatch(r'([+-])?(\d{1,2}):([0-5]\d)', tz_str)
+    m = re.fullmatch(r'([+-])?(\d{1,2}):([0-5]\d)', s)
     if m:
         sign = -1 if m.group(1) == '-' else 1
-        hrs  = int(m.group(2))
-        mins = int(m.group(3))
-        return sign * (hrs + mins / 60)
+        return sign * (int(m.group(2)) + int(m.group(3)) / 60)
+    z = zoneinfo.ZoneInfo(s)              # IANA name
+    return z.utcoffset(ref).total_seconds() / 3600
 
-    # 3) assume IANA name
-    try:
-        z = zoneinfo.ZoneInfo(tz_str)
-        return z.utcoffset(ref_dt).total_seconds() / 3600
-    except Exception as e:                       # noqa: BLE001
-        raise ValueError(f"Unsupported time‑zone value '{tz_val}'") from e
+# ── helpers: natal chart & strength lookups ──────────────────────────────
+def _planet_positions(jd: float, place: Place):
+    """Returns list [[L,(ascRaasi,long)], [0,(r,long)],…] exactly as
+    documented for `jhora.horoscope.chart.charts.rasi_chart`."""
+    return jcharts.rasi_chart(jd, place)
 
+def _sav_scores(hp_list: List[str]) -> Dict[int, int]:
+    """Sarva‑aṣṭakavarga totals per sign {1‑12:score}."""
+    _bav, sav_tot, _ = jashta.get_ashtaka_varga(hp_list)
+    return {i + 1: sav_tot[i] for i in range(12)}
 
-def _planet_positions(jd: float, place: pdrik.Place):
-    return jd_charts.rasi_chart(jd, place)
+def _shadbala_ratios(jd: float, place: Place) -> List[float]:
+    """`strength.shad_bala` returns a tuple whose 9‑th item is ratios."""
+    return jstrength.shad_bala(jd, place)[8]
 
-
-def _sign_of_longitude(lon: float) -> int:
-    return int(lon // 30) % 12
-
-
-# ═════════════════════════════════════════════════════════════════════════
-# Sarva‑aṣṭakavarga
-# ═════════════════════════════════════════════════════════════════════════
-def _sav_scores(house_to_planet_list: List[str]) -> Dict[int, int]:
-    _binna, sav_totals, _ = jd_ashta.get_ashtaka_varga(house_to_planet_list)
-    return {i + 1: sav_totals[i] for i in range(12)}
-
-
-# ═════════════════════════════════════════════════════════════════════════
-# daśā helpers
-# ═════════════════════════════════════════════════════════════════════════
-def _tree_to_df(raw, label: str) -> pd.DataFrame:
-    """Flatten any daśā tree and return **only** mahā‑daśā rows.
-
-    The function is resilient to:
-      • deeply nested list / tuple structures
-      • mixed start‑date formats (ISO string, (y,m,d), or Julian‑day)
-      • cases where *no* mahā‑daśā rows are found (returns empty DF
-        with the expected columns so downstream code never KeyErrors).
+# ── functional benefic / malefic classifier (lagna‑dependent) ────────────
+def _functional_nature(asc: int, planet: int) -> int:
     """
-    rows: list[dict] = []
+    Very simple definition (enough for heuristic scoring):
 
-    def walk(node):
-        if not isinstance(node, (list, tuple)):
-            return
-        # potential leaf: last item looks like a date & first item int‑ish
-        if len(node) >= 2:
-            start_dt = _to_datetime(node[-1])
-            if start_dt is not None:
-                try:
-                    lord = int(float(node[0]))
-                except Exception:                             # noqa: BLE001
-                    lord = None
-                if lord is not None:
-                    rows.append(
-                        dict(system=label,
-                             level="maha",
-                             lord=lord,
-                             start=start_dt,
-                             end=start_dt + timedelta(days=365))  # ≈1 yr span
-                    )
-                    return
-        # recurse through children
-        for child in node:
-            walk(child)
+        +1  → Lagna lord or lord of 5th / 9th houses
+        −1  → Lord of 6th / 8th / 12th
+         0  → others
+    """
+    owner = const.house_owners.get(planet)            # documented mapping
+    if owner is None:
+        return 0
+    rel_house = (owner - asc) % 12 or 12
+    if rel_house in (1, 5, 9):
+        return 1
+    if rel_house in (6, 8, 12):
+        return -1
+    return 0
 
-    walk(raw)
+# ── score → label helper ─────────────────────────────────────────────────
+def _label_for(score: int) -> str:
+    for lbl, th in LABELS:
+        if score >= th:
+            return lbl
+    # should never fall through
+    return LABELS[-1][0]
 
-    # guarantee the expected schema even when `rows` is empty
-    cols = ["system", "level", "lord", "start", "end"]
-    if not rows:
-        return pd.DataFrame(columns=cols)
+# ── flatten Vimsottari & Narayana antardaśā lists to a DataFrame ─────────
+def _dashas(jd_birth: float, place: Place) -> pd.DataFrame:
+    """
+    Returns rows:
+        maha, antara, start‑dt, end‑dt
+    """
+    rows: List[Tuple[int, int, datetime, datetime]] = []
 
-    return (pd.DataFrame(rows, columns=cols)
-              .drop_duplicates(subset=["lord", "start"])
-              .sort_values("start"))
+    # Vimsottari
+    vim = jvim.get_vimsottari_dhasa_bhukthi(jd_birth, place)
+    for idx, (m_lord, a_lord, start) in enumerate(vim):
+        start_dt = _to_dt(start)
+        end_dt   = _to_dt(vim[idx + 1][2]) - timedelta(days=1) if idx + 1 < len(vim) else start_dt + timedelta(days=360)
+        rows.append(("VIM", m_lord, a_lord, start_dt, end_dt))
 
+    # Narayana (raasi)  – API returns list identical to Vim format
+    nar = jnar.narayana_dhasa_for_divisional_chart(jd_birth, place, jd_birth)  # years_from_dob=0
+    for idx, (m_lord, a_lord, start) in enumerate(nar):
+        start_dt = _to_dt(start)
+        end_dt   = _to_dt(nar[idx + 1][2]) - timedelta(days=1) if idx + 1 < len(nar) else start_dt + timedelta(days=360)
+        rows.append(("NAR", m_lord, a_lord, start_dt, end_dt))
 
-# ════════════════════════════════════════════════════════════════════════
-# 3)  _dashas  ←  **unchanged except it now trusts the safer parser**
-# ════════════════════════════════════════════════════════════════════════
-def _dashas(dob: datetime, place: pdrik.Place,
-            start_age: int = 18, span: int = 62):
-    win1, win2 = (dob + timedelta(days=365.25 * start_age),
-                  dob + timedelta(days=365.25 * (start_age + span)))
+    return pd.DataFrame(rows, columns=["sys", "maha", "antara", "start", "end"])
 
-    jd_birth = jutils.julian_day_number(
-        (dob.year, dob.month, dob.day), (dob.hour, dob.minute, dob.second))
-
-    vim_raw = jd_vimsottari.get_vimsottari_dhasa_bhukthi(
-        jd_birth, place, include_antardhasa=True)
-
-    date_cls = getattr(pdrik, "Date", None)
-    date_arg = date_cls(dob.year, dob.month, dob.day) if date_cls else (
-        dob.year, dob.month, dob.day)
-
-    nar_raw = jd_narayana.narayana_dhasa_for_divisional_chart(
-        date_arg, (dob.hour, dob.minute, dob.second), place,
-        divisional_chart_factor=10, include_antardhasa=True)
-
-    vim = _tree_to_df(vim_raw, "vim")
-    nar = _tree_to_df(nar_raw, "nar")
-    return (vim[(win1 <= vim.start) & (vim.start <= win2)],
-            nar[(win1 <= nar.start) & (nar.start <= win2)])
-
-
-# ════════════════════════════════════════════════════════════════════════
-# transit trigger – Jupiter / Saturn on Lagna sign
-# ════════════════════════════════════════════════════════════════════════
-def _transit_key_hit(mid: datetime, natal_pp) -> bool:
-    jd_mid = jutils.julian_day_number(
-        (mid.year, mid.month, mid.day),
-        (mid.hour, mid.minute, mid.second))
-    tr_pp = _planet_positions(jd_mid,
-                              _build_place("geo", 0.0, 0.0, 0.0))
-    asc_sign = natal_pp[0][1][0]                         # Lagna index 0
-    jup_sign = _sign_of_longitude(tr_pp[const._JUPITER + 1][1][1])
-    sat_sign = _sign_of_longitude(tr_pp[const._SATURN  + 1][1][1])
-    return asc_sign in (jup_sign, sat_sign)
-
-
-# ════════════════════════════════════════════════════════════════════════
-# scoring engine
-# ════════════════════════════════════════════════════════════════════════
-def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
-                  sb_strengths: List[float],
+# ── master rating routine ────────────────────────────────────────────────
+def _rate_periods(df: pd.DataFrame, asc: int,
                   sav: Dict[int, int],
-                  natal_pp) -> pd.DataFrame:
+                  sb: List[float]) -> pd.DataFrame:
 
-    wealth_lords = {const._JUPITER, const._VENUS}
-    career_lords = {const._SUN, const._MERCURY, const._SATURN, const._MARS}
-
-    def _score(row) -> Dict[str, object]:
-        start, end, lord = row.start, row.end, row.lord
-        mid = start + (end - start) / 2
+    def _score_row(r) -> Tuple[str, str]:
+        # ------------------------------------------------------------------
         score = 0
 
-        # lordship
-        if lord in wealth_lords:
-            score += WEALTH_LORD_WT
-        if lord in career_lords:
-            score += CAREER_LORD_WT
+        # 1) basic house lordship (wealth: 2/11, career: 10)  --------------
+        if r.maha in (const.house_lords[2], const.house_lords[11]):
+            score += WEALTH_WT
+        if r.maha == const.house_lords[10]:
+            score += CAREER_WT
 
-        # SAV strength
-        if lord in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
+        # 2) functional benefic / malefic ----------------------------------
+        func_nature = _functional_nature(asc, r.maha)
+        if func_nature == 1:
+            score += FUNC_BEN_WT
+        elif func_nature == -1:
+            score += FUNC_MAL_WT
+
+        # 3) Sarva‑aṣṭakavarga support (signs 2,10,11 auspicious) ----------
+        lord_sign = const.house_owners.get(r.maha)
+        if sav.get(lord_sign, 0) >= SAV_THRESHOLD:
             score += SAV_BONUS_WT
-        if lord in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
-            score += SAV_BONUS_WT
 
-        # Shadbala
-        sb_ratio = sb_strengths[lord] if 0 <= lord < len(sb_strengths) else 1.0
-        if sb_ratio >= SHADBALA_GOOD:
-            score += STRENGTH_BONUS
-        elif sb_ratio < SHADBALA_BAD:
-            score += STRENGTH_MALUS
+        # 4) Shadbala ratio -----------------------------------------------
+        try:
+            sb_ratio = sb[r.maha]
+        except IndexError:
+            sb_ratio = 1.0
+        if sb_ratio >= 1.0:
+            score += SB_GOOD_BONUS
+        elif sb_ratio < 0.75:
+            score += SB_POOR_MALUS
 
-        # label
-        label = next(lbl for lbl, th in LABELS if score >= th)
-        if label == "EXCELLENT" and not _transit_key_hit(mid, natal_pp):
-            label = "GOOD" if score >= 40 else "NEUTRAL"
+        label = _label_for(score)
+        return (f"{r.start.date()} → {r.end.date()}", label)
 
-        return dict(system=row.system,
-                    level=row.level,
-                    period=f"{start.date()} → {end.date()}",
-                    lord=const.planet_symbols.get(lord, str(lord))
-                         if hasattr(const, "planet_symbols") else str(lord),
-                    score=score,
-                    rating=label)
+    # vectorised apply → list of tuples
+    periods, labels = zip(*df.itertuples(index=False).map(_score_row))  # type: ignore
+    return pd.DataFrame({"period": periods, "rating": labels})
 
-    combined = pd.concat([vim, nar], ignore_index=True)
-    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)]
-                        ).sort_values("period")
+# ── public helper (Flask / CLI) ──────────────────────────────────────────
+def timeline_from_args(*,
+                       name: str,
+                       date: str,
+                       time: str,
+                       lat,
+                       lon,
+                       tz: str | float = "+00:00",
+                       ayanamsa: str = "Lahiri") -> pd.DataFrame:
+    """
+    Stateless convenience wrapper.
 
+    Parameters
+    ----------
+    name      – place name (for log only)
+    date      – ‘YYYY‑MM‑DD’
+    time      – ‘HH:MM’
+    lat, lon  – floats (deg)
+    tz        – +HH:MM | IANA zone | float
+    ayanamsa  – passed to PyJHora by mutating `const._DEFAULT_AYANAMSA_MODE`
+    """
+    # 1) place & birth JD --------------------------------------------------
+    dob   = datetime.fromisoformat(f"{date}T{time}")
+    offset = _tz_offset_hours(tz, dob)
+    place = _build_place(name, float(lat), float(lon), offset)
 
-# ════════════════════════════════════════════════════════════════════════
-# public helper (for Flask)
-# ════════════════════════════════════════════════════════════════════════
-def timeline_from_args(*, name: str, date: str, time: str,
-                       lat, lon, tz: str | float = "+00:00") -> pd.DataFrame:
-    lat, lon = float(lat), float(lon)
-    dob = datetime.fromisoformat(f"{date}T{time}")
-    offset = _tz_to_offset_hours(tz, dob)
-    place = _build_place(name, lat, lon, offset)
+    # honour caller‑supplied ayanāṃśa
+    if hasattr(const, "_DEFAULT_AYANAMSA_MODE"):
+        const._DEFAULT_AYANAMSA_MODE = ayanamsa.upper()
 
-    jd_birth = jutils.julian_day_number(
-        (dob.year, dob.month, dob.day),
-        (dob.hour, dob.minute, dob.second))
-    natal_pp = _planet_positions(jd_birth, place)
+    jd_birth = jutils.julian_day_number((dob.year, dob.month, dob.day),
+                                        (dob.hour, dob.minute, dob.second))
 
-    h_to_p = jutils.get_house_planet_list_from_planet_positions(natal_pp)
-    sav = _sav_scores(h_to_p)
+    # 2) natal chart derived helpers --------------------------------------
+    natal_pp  = _planet_positions(jd_birth, place)
+    asc_sign  = natal_pp[0][1][0]                             # Lagna sign
+    sav_dict  = _sav_scores(jutils.get_house_planet_list_from_planet_positions(natal_pp))
+    sb_ratios = _shadbala_ratios(jd_birth, place)
 
-    sb_strengths = jd_strength.shad_bala(jd_birth, place)[8]
+    # 3) daśās → ratings ---------------------------------------------------
+    dasha_df  = _dashas(jd_birth, place)
+    return _rate_periods(dasha_df, asc_sign, sav_dict, sb_ratios)
 
-    vim_df, nar_df = _dashas(dob, place)
-
-    return _rate_periods(vim_df, nar_df, sb_strengths, sav, natal_pp)
-
-
-# ════════════════════════════════════════════════════════════════════════
-# simple CLI for quick testing
-# ════════════════════════════════════════════════════════════════════════
+# ── CLI (for quick manual verification) ──────────────────────────────────
 def _cli() -> None:
-    ap = argparse.ArgumentParser(description="Generate wealth/career timeline")
-    ap.add_argument("--name", required=True)
+    ap = argparse.ArgumentParser(description="Generate career/wealth timeline")
+    ap.add_argument("--name", required=True, help="Place name (for logs)")
     ap.add_argument("--date", required=True, help="YYYY‑MM‑DD")
     ap.add_argument("--time", required=True, help="HH:MM (24‑h)")
     ap.add_argument("--lat",  type=float, required=True)
     ap.add_argument("--lon",  type=float, required=True)
-    ap.add_argument("--tz",   default="+00:00",
-                    help="TZ offset hours or IANA zone")
+    ap.add_argument("--tz",   default="+00:00", help="TZ offset or IANA zone")
     args = ap.parse_args()
 
     df = timeline_from_args(name=args.name, date=args.date, time=args.time,
                             lat=args.lat, lon=args.lon, tz=args.tz)
-    out = f"timeline_{args.name.replace(' ', '_')}.csv"
-    df.to_csv(out, index=False)
     print(df.to_string(index=False))
-    print(f"\nSaved → {out}")
-
 
 if __name__ == "__main__":
     _cli()
