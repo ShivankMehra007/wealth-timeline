@@ -182,13 +182,41 @@ def _dignity_level(planet: int, sign: int) -> int:
     return -1  # enemy
 
 
-def _planet_sign_in_chart(house_to_planet_list: List[str], planet: int) -> int | None:
-    """Return sign index [0‑11] where *planet* resides in *house_to_planet_list*."""
+def _planet_sign_in_chart(house_to_planet_list: List[object], planet: int) -> int | None:
+    """Locate *planet* in a house‑to‑planet mapping (Rāśi or divisional).
+
+    The helper copes with three observed cell formats produced by PyJHora:
+      1. A **string**      e.g. "L/5/2"  (slash‑separated ids)
+      2. A **list/tuple**  e.g. ["L", 5]  *or* ["L", [5, 26.8]]
+      3. Empty string / list for vacant signs.
+    """
     for sign_idx, cell in enumerate(house_to_planet_list):
-        if not cell:
+        if cell in (None, "", []):
             continue
-        if any(int(p) == planet for p in str(cell).split('/') if p and p != 'L'):
-            return sign_idx
+
+        # normalise → iterable of token strings
+        if isinstance(cell, str):
+            tokens: Iterable[str] = cell.split("/")
+        elif isinstance(cell, (list, tuple)):
+            # flatten nested lists like ["L", [5, 26.8]] → ["L", "5"]
+            flat: List[str] = []
+            for item in cell:
+                if isinstance(item, (list, tuple)):
+                    flat.extend(map(str, item))
+                else:
+                    flat.append(str(item))
+            tokens = flat
+        else:
+            tokens = [str(cell)]
+
+        for t in tokens:
+            if t == "L":
+                continue
+            try:
+                if int(float(t)) == planet:
+                    return sign_idx
+            except ValueError:
+                continue
     return None
 
 # ═══════════════════════════════════════════════════════════════════════════
