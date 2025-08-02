@@ -550,7 +550,7 @@ def _rate_periods(
         return {"period": f"{start.date()} → {end.date()}", "rating": label}
 
     combined = pd.concat([vim_df, nar_df], ignore_index=True)
-    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)]) for r in combined.itertuples(index=False)])        
+    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)]) for r in combined.itertuples(index=False))        
 
     def planet_base(p: int) -> int:
         """Core score for a given planet using same rules (lordship→dosha)"""
