@@ -418,7 +418,7 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
 
         # NEW: Divisional‑chart confirmation
         score += _divisional_bonus(lord)
-            score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
+        score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
 
         # label & transit veto
         label = next(lbl for lbl, th in LABELS if score >= th)
