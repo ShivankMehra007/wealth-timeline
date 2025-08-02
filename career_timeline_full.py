@@ -54,6 +54,15 @@ RAJA_BONUS = 15
 DHANA_BONUS = 12
 VIPAREETA_BONUS = 7
 KEMADRUMA_PENALTY = -12
+# Dosha penalties / bonuses
+COMBUST_PENALTY = -6
+WAR_WIN_BONUS = 3
+WAR_LOSE_PENALTY = -7
+RETRO_BENEFIC_BONUS = 4
+RETRO_MALEFIC_PENALTY = -4
+DEBILITATION_PENALTY = -8
+
+BENEFICS_NATURAL = {const._JUPITER, const._VENUS, const._MOON, const._MERCURY}
 
 LABELS: tuple[tuple[str, int], ...] = (
     ("EXCELLENT", 50),
@@ -226,6 +235,47 @@ def _planet_sign_in_chart(house_to_planet_list: List[object], planet: int) -> in
                 continue
     return None
 
+# ───────────────────────────────────────────────────────────────────────────
+# Dosha flags helper
+# ───────────────────────────────────────────────────────────────────────────
+
+def _dosha_maps(natal_pp):
+    """Return (combust_set, retro_set, war_dict) where war_dict maps planet→±pts."""
+    combust, retro, war_dict = set(), set(), {}
+    # combustion
+    for func in (getattr(jd_charts, "planets_in_combustion", None),
+                 getattr(jd_strength, "planets_in_combustion", None)):
+        if func:
+            try:
+                combust = set(func(natal_pp))
+                break
+            except Exception:
+                pass
+    # retrograde
+    for func in (getattr(jd_charts, "planets_in_retrograde", None),
+                 getattr(pdrik, "planets_in_retrograde", None)):
+        if func:
+            try:
+                retro = set(func(natal_pp))
+                break
+            except Exception:
+                pass
+    # graha‑yuddha
+    for func in (getattr(pdrik, "planets_in_graha_yudh", None),
+                 getattr(jd_charts, "planets_in_graha_yudh", None)):
+        if func:
+            try:
+                pairs = func(natal_pp)
+                for item in pairs or []:
+                    if isinstance(item, (tuple, list)) and len(item) == 2:
+                        winner, loser = item
+                        war_dict[winner] = WAR_WIN_BONUS
+                        war_dict[loser] = WAR_LOSE_PENALTY
+                break
+            except Exception:
+                pass
+    return combust, retro, war_dict
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Sarva‑aṣṭakavarga helper
 # ═══════════════════════════════════════════════════════════════════════════
@@ -359,6 +409,9 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
     _p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
     _asc_house = next((i for i, cell in enumerate(_h2p) if 'L' in str(cell).split('/')), None)
 
+    # dosha pre‑calc
+    _combust_set, _retro_set, _war_dict = _dosha_maps(natal_pp)
+
     d1_levels = {p: _dignity_level(p, natal_pp[p + 1][1][0])
                 for p in range(const._SATURN + 1)}
 
@@ -416,9 +469,18 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
         elif sb_ratio < SHADBALA_BAD:
             score += STRENGTH_MALUS
 
-        # NEW: Divisional‑chart confirmation
+                # NEW: Divisional‑chart confirmation & yogas
         score += _divisional_bonus(lord)
         score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
+
+        # Dosha flags
+        if lord in _combust_set:
+            score += COMBUST_PENALTY
+        if lord in _retro_set:
+            score += (RETRO_BENEFIC_BONUS if lord in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
+        score += _war_dict.get(lord, 0)
+        if d1_levels.get(lord, 0) == -2:
+            score += DEBILITATION_PENALTY(lord, _h2p, _p2h, _asc_house)
 
         # label & transit veto
         label = next(lbl for lbl, th in LABELS if score >= th)
