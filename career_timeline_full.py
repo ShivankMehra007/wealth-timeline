@@ -359,7 +359,7 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
     _asc_house = next((i for i, cell in enumerate(_h2p) if 'L' in str(cell).split('/')), None)
 
         p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
-    }
+
 
     def _varga_level(chart_key: str, planet: int) -> int | None:
         sign = _planet_sign_in_chart(vargas[chart_key], planet)
