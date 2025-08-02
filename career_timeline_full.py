@@ -480,7 +480,7 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
             score += (RETRO_BENEFIC_BONUS if lord in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
         score += _war_dict.get(lord, 0)
         if d1_levels.get(lord, 0) == -2:
-            score += DEBILITATION_PENALTY(lord, _h2p, _p2h, _asc_house)
+            score += DEBILITATION_PENALTY
 
         # label & transit veto
         label = next(lbl for lbl, th in LABELS if score >= th)
