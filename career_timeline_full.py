@@ -68,6 +68,24 @@ PM_PURUSHA_BONUS = 12      # each of the five Mahā‑purusha yogas
 AMALA_BONUS = 6
 PARIVARTANA_DHANA_BONUS = 8
 PARIVARTANA_RAJA_BONUS = 12
+# ── New *negative* yoga / doṣa penalties (wealth‑career hindrances) ──
+DARIDRA_PENALTY = -15
+ARTHA_NIDRA_PENALTY = -12
+CHORA_PENALTY = -10
+KUBERA_BHANGA_PENALTY = -12
+ALABDHA_BHAGYA_PENALTY = -10
+ROGA_PENALTY = -10
+KANTAKA_SATURN_PENALTY = -7  # sits in _transit_bonus too
+KEMADRUMA_PENALTY = -12  # (already defined)
+GRAHANA_DOSHA_PENALTY = -10
+PAAP_KARTARI_PENALTY = -10
+PANCHA_PAAPA_PENALTY = -12
+DVIR_ROGA_PENALTY = -8
+CHATRU_ASHRA_PENALTY = -8
+KALA_SARPA_PENALTY = -20
+SHRAPIT_PENALTY = -12
+GURU_CHANDALA_PENALTY = -15
+RAHU_KETU_2_8_PENALTY = -8
 # Dosha penalties / bonuses
 COMBUST_PENALTY = -6
 WAR_WIN_BONUS = 3
@@ -434,8 +452,9 @@ def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int
     except Exception:
         pass
 
-    # ——— Expanded wealth yogas via direct function lookup ————————
+        # ——— Expanded wealth yogas via direct function lookup ————————
     _yoga_map = {
+        # positive
         "chandra_mangala_yoga": (CHANDRA_MANGALA_BONUS, {const._MOON, const._MARS}),
         "sunaphaa_yoga":       (SUNAPHA_ANAPHA_BONUS, {const._MOON}),
         "anaphaa_yoga":        (SUNAPHA_ANAPHA_BONUS, {const._MOON}),
@@ -447,6 +466,20 @@ def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int
         "ubhaya_chara_yoga":   (UBHAYACHARI_BONUS, {const._SUN}),
         "adhi_yoga":           (ADHI_BONUS, BENEFICS_NATURAL),
         "amala_yoga":          (AMALA_BONUS, set(range(const._SATURN + 1))),
+        # negative yogas / doṣas
+        "daridra_yoga":        (DARIDRA_PENALTY, set(range(const._SATURN + 1))),
+        "artha_nidra_yoga":    (ARTHA_NIDRA_PENALTY, set(range(const._SATURN + 1))),
+        "chora_yoga":          (CHORA_PENALTY, set(range(const._SATURN + 1))),
+        "kubera_bhanga_yoga":  (KUBERA_BHANGA_PENALTY, {const._JUPITER}),
+        "alabdhabhāgya_yoga":  (ALABDHA_BHAGYA_PENALTY, set(range(const._SATURN + 1))),
+        "roga_yoga":           (ROGA_PENALTY, set(range(const._SATURN + 1))),
+        "grahana_dosha":       (GRAHANA_DOSHA_PENALTY, {const._SUN, const._MOON}),
+        "paap_kartari_yoga":   (PAAP_KARTARI_PENALTY, set(range(const._SATURN + 1))),
+        "panchaka_paapa_yoga": (PANCHA_PAAPA_PENALTY, set(range(const._SATURN + 1))),
+        "dvi_roga_yoga":       (DVIR_ROGA_PENALTY, set(range(const._SATURN + 1))),
+        "kala_sarpa_dosha":    (KALA_SARPA_PENALTY, set(range(const._SATURN + 1))),
+        "shrapit_dosha":       (SHRAPIT_PENALTY, {const._SATURN, const._RAHU}),
+        "guru_chandala_yoga":  (GURU_CHANDALA_PENALTY, {const._JUPITER, const._RAHU}),
     }
     for func_name, (wt, parts) in _yoga_map.items():
         if planet not in parts:
