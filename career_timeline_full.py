@@ -444,6 +444,53 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
                 else:
                     adjustments.append(DIV_PENALTY)
         return sum(adjustments)
+        
+    def _score(row) -> Dict[str, object]:
+        start, end, lord = row.start, row.end, row.lord
+        mid = start + (end - start) / 2
+        score = 0
+
+        # lordship
+        if lord in wealth_lords:
+            score += WEALTH_LORD_WT
+        if lord in career_lords:
+            score += CAREER_LORD_WT
+
+        # Sarva‑aṣṭakavarga support
+        if lord in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
+            score += SAV_BONUS_WT
+        if lord in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
+            score += SAV_BONUS_WT
+
+        # Śad‑bala strength
+        sb_ratio = sb_strengths[lord] if 0 <= lord < len(sb_strengths) else 1.0
+        if sb_ratio >= SHADBALA_GOOD:
+            score += STRENGTH_BONUS
+        elif sb_ratio < SHADBALA_BAD:
+            score += STRENGTH_MALUS
+
+                # NEW: Divisional‑chart confirmation & yogas
+        score += _divisional_bonus(lord)
+        score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
+
+        # Dosha flags
+        if lord in _combust_set:
+            score += COMBUST_PENALTY
+        if lord in _retro_set:
+            score += (RETRO_BENEFIC_BONUS if lord in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
+        score += _war_dict.get(lord, 0)
+        if d1_levels.get(lord, 0) == -2:
+            score += DEBILITATION_PENALTY
+
+        # label & transit veto
+        label = next(lbl for lbl, th in LABELS if score >= th)
+        if label == "EXCELLENT" and not _transit_key_hit(mid, natal_pp):
+            label = "GOOD" if score >= 40 else "NEUTRAL"
+
+        return dict(period=f"{start.date()} → {end.date()}", rating=label)
+
+    combined = pd.concat([vim, nar], ignore_index=True)
+    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)])        
 
     def planet_base(p: int) -> int:
         """Core score for a given planet using same rules (lordship→dosha)"""
