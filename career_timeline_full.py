@@ -551,10 +551,6 @@ def _rate_periods(
         label = next(lbl for lbl, th in LABELS if score >= th)
         if t_pos == 0 and score >= 35:  # no positives, cap at GOOD
             label = "GOOD"
-        elif label == "EXCELLENT" and (asc_sign not in (jup_s, sat_s)):
-            # previous veto logic – keep as safety (rare overlap)
-            label = "GOOD" if score >= 40 else "NEUTRAL"
-
         return {"period": f"{start.date()} → {end.date()}", "rating": label}
 
     combined = pd.concat([vim_df, nar_df], ignore_index=True)
