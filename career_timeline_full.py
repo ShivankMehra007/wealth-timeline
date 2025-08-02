@@ -30,6 +30,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Iterable, List
 
 import pandas as pd
+from jhora.horoscope.chart import yoga as jd_yoga
+from jhora.horoscope.chart import raja_yoga as jd_raja
 
 # ── PyJHora ────────────────────────────────────────────────────────────────
 from jhora import const, utils as jutils
@@ -47,6 +49,11 @@ STRENGTH_BONUS, STRENGTH_MALUS = 10, -10
 DIV_EQUAL_BONUS, DIV_MINOR_BONUS, DIV_PENALTY = 10, 5, -5
 SHADBALA_GOOD, SHADBALA_BAD = 1.0, 0.75
 SAV_WEALTH_TH, SAV_CAREER_TH = 28, 30
+# ―― Yoga/Doṣa weights ――
+RAJA_BONUS = 15
+DHANA_BONUS = 12
+VIPAREETA_BONUS = 7
+KEMADRUMA_PENALTY = -12
 
 LABELS: tuple[tuple[str, int], ...] = (
     ("EXCELLENT", 50),
@@ -292,6 +299,48 @@ def _transit_key_hit(mid: datetime, natal_pp) -> bool:
 # scoring engine (includes divisional confirmation)
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ────────────────────────────────────────────────────────────────
+# Yoga & Doṣa evaluation helper
+# ────────────────────────────────────────────────────────────────
+
+def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int | None) -> int:
+    """Return cumulative bonus/penalty for yogas & doṣas involving *planet*."""
+    score = 0
+    # Rāja‑yoga participation
+    try:
+        for p1, p2 in jd_raja_yoga_pairs := jd_raja.get_raja_yoga_pairs(h2p):
+            if planet in (p1, p2):
+                score += RAJA_BONUS
+                # viparīta subtype check
+                try:
+                    if jd_raja.vipareetha_raja_yoga(p2h, p1, p2):
+                        score += VIPAREETA_BONUS
+                except Exception:
+                    pass
+                break
+    except Exception:
+        pass
+
+    # Dhana‑yoga heuristic: occupant or lord of 2nd / 11th
+    try:
+        if p2h.get(planet) in (1, 10):  # houses are 0‑based
+            score += DHANA_BONUS
+        elif any(str(planet) in str(h2p[i]).split('/') for i in (1, 10)):
+            score += DHANA_BONUS
+    except Exception:
+        pass
+
+    # Kemadruma doṣa penalises Moon
+    if planet == const._MOON and asc_house is not None:
+        try:
+            if jd_yoga.kemadruma_yoga(h2p, p2h, asc_house):
+                score += KEMADRUMA_PENALTY
+        except Exception:
+            pass
+    return score
+
+# ════════════════════════════════════════════════════════════════
+
 def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
                   sb_strengths: List[float], sav: Dict[int, int], natal_pp,
                   vargas: Dict[str, List[str]]) -> pd.DataFrame:
@@ -301,6 +350,14 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
 
     # pre‑compute dignity levels of all planets in all relevant charts
     d1_levels = {
+        p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
+    }
+
+    # helpers for yoga scoring
+    _h2p = jutils.get_house_planet_list_from_planet_positions(natal_pp)
+    _p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
+    _asc_house = next((i for i, cell in enumerate(_h2p) if 'L' in str(cell).split('/')), None)
+
         p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
     }
 
@@ -360,6 +417,7 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
 
         # NEW: Divisional‑chart confirmation
         score += _divisional_bonus(lord)
+            score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
 
         # label & transit veto
         label = next(lbl for lbl, th in LABELS if score >= th)
