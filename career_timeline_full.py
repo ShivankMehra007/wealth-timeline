@@ -62,6 +62,9 @@ RETRO_BENEFIC_BONUS = 4
 RETRO_MALEFIC_PENALTY = -4
 DEBILITATION_PENALTY = -8
 
+# global re‑normalisation factor (logic I)
+RAW_SCALE = 0.8  # rescales final score so outputs still ~ −30 … +90
+
 BENEFICS_NATURAL = {const._JUPITER, const._VENUS, const._MOON, const._MERCURY}
 
 # ── Functional benefic/ malefic lookup upgrade (logic H) ───────────────
@@ -575,9 +578,12 @@ def _rate_periods(
         else:
             score = _planet_base(lord)
 
-        # ② transit overlay
+                # ② transit overlay
         t_delta, t_pos = _transit_bonus(mid, lord)
         score += t_delta
+
+        # re‑normalise (logic I)
+        score = int(round(score * RAW_SCALE))
 
         # ③ final label with cap rule
         label = next(lbl for lbl, th in LABELS if score >= th)
