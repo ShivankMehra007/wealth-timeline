@@ -64,6 +64,14 @@ DEBILITATION_PENALTY = -8
 
 BENEFICS_NATURAL = {const._JUPITER, const._VENUS, const._MOON, const._MERCURY}
 
+# ── Functional benefic/ malefic lookup upgrade (logic H) ───────────────
+# Helper categorisation keys
+FUNC_YOGA = "Y"   # yoga‑kāraka (owns kendra & trine)
+FUNC_BENE = "+"   # functional benefic
+FUNC_MALE = "-"   # functional malefic
+FUNC_NEUT = "0"   # mixed/neutral
+
+
 LABELS: tuple[tuple[str, int], ...] = (
     ("EXCELLENT", 50),
     ("GOOD",       35),
@@ -134,6 +142,25 @@ def _planet_positions(jd: float, place: pdrik.Place):
 def _sign_of_longitude(lon: float) -> int:
     """0 = Aries … 11 = Pisces"""
     return int(lon // 30) % 12
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Functional benefic helper (BUILD‑TIME logic)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _functional_role(planet: int, asc_sign: int) -> str:
+    """Return role key for *planet* given ascendant sign (0‑based)."""
+    # derive houses ruled by planet
+    houses = [((s - asc_sign) % 12) + 1 for s, lord in enumerate(_SIGN_LORD) if lord == planet]
+    is_trine   = any(h in (1, 5, 9) for h in houses)
+    is_kendra  = any(h in (1, 4, 7, 10) for h in houses)
+    is_dusht   = any(h in (6, 8, 12) for h in houses)
+    if is_trine and is_kendra:
+        return FUNC_YOGA
+    if is_trine and not is_dusht:
+        return FUNC_BENE
+    if is_dusht and not is_trine and not is_kendra:
+        return FUNC_MALE
+    return FUNC_NEUT
 
 # ═══════════════════════════════════════════════════════════════════════════
 # dignity helpers – classical relationships hard‑coded (books‑safe)
@@ -420,6 +447,11 @@ def _rate_periods(
 
     _combust_set, _retro_set, _war_dict = _dosha_maps(natal_pp)
 
+    # functional roles table for this lagna
+    _func_role = {p: _functional_role(p, asc_sign) for p in range(const._SATURN + 1)}
+    _func_benefics = {p for p, r in _func_role.items() if r in (FUNC_YOGA, FUNC_BENE)}
+
+
     # —— helper: dignities in vargas (kept from earlier) ————————————
     def _varga_level(chart_key: str, planet: int) -> int | None:
         sign = _planet_sign_in_chart(vargas[chart_key], planet)
@@ -462,7 +494,7 @@ def _rate_periods(
         if p in _combust_set:
             sc += COMBUST_PENALTY
         if p in _retro_set:
-            sc += RETRO_BENEFIC_BONUS if p in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY
+            sc += RETRO_BENEFIC_BONUS if p in _func_benefics else RETRO_MALEFIC_PENALTY
         sc += _war_dict.get(p, 0)
         if d1_levels.get(p, 0) == -2:
             sc += DEBILITATION_PENALTY
@@ -625,7 +657,7 @@ def _rate_periods(
             if lord in _combust_set:
                 score += COMBUST_PENALTY
             if lord in _retro_set:
-                score += (RETRO_BENEFIC_BONUS if lord in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
+                score += RETRO_BENEFIC_BONUS if lord in _func_benefics else RETRO_MALEFIC_PENALTY
             score += _war_dict.get(lord, 0)
             if d1_levels.get(lord, 0) == -2:
                 score += DEBILITATION_PENALTY
