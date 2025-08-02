@@ -445,32 +445,32 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
                     adjustments.append(DIV_PENALTY)
         return sum(adjustments)
 
-            def planet_base(p: int) -> int:
-            """Core score for a given planet using same rules (lordship→dosha)"""
-            bs = 0
-            if p in wealth_lords:
-                bs += WEALTH_LORD_WT
-            if p in career_lords:
-                bs += CAREER_LORD_WT
-            if p in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
-                bs += SAV_BONUS_WT
-            if p in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
-                bs += SAV_BONUS_WT
-            ratio = sb_strengths[p] if 0 <= p < len(sb_strengths) else 1.0
-            if ratio >= SHADBALA_GOOD:
-                bs += STRENGTH_BONUS
-            elif ratio < SHADBALA_BAD:
-                bs += STRENGTH_MALUS
-            bs += _divisional_bonus(p)
-            bs += _yoga_bonus(p, _h2p, _p2h, _asc_house)
-            if p in _combust_set:
-                bs += COMBUST_PENALTY
-            if p in _retro_set:
-                bs += (RETRO_BENEFIC_BONUS if p in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
-            bs += _war_dict.get(p, 0)
-            if d1_levels.get(p, 0) == -2:
-                bs += DEBILITATION_PENALTY
-            return bs
+    def planet_base(p: int) -> int:
+        """Core score for a given planet using same rules (lordship→dosha)"""
+        bs = 0
+        if p in wealth_lords:
+            bs += WEALTH_LORD_WT
+        if p in career_lords:
+            bs += CAREER_LORD_WT
+        if p in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
+            bs += SAV_BONUS_WT
+        if p in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
+            bs += SAV_BONUS_WT
+        ratio = sb_strengths[p] if 0 <= p < len(sb_strengths) else 1.0
+        if ratio >= SHADBALA_GOOD:
+            bs += STRENGTH_BONUS
+        elif ratio < SHADBALA_BAD:
+            bs += STRENGTH_MALUS
+        bs += _divisional_bonus(p)
+        bs += _yoga_bonus(p, _h2p, _p2h, _asc_house)
+        if p in _combust_set:
+            bs += COMBUST_PENALTY
+        if p in _retro_set:
+            bs += (RETRO_BENEFIC_BONUS if p in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
+        bs += _war_dict.get(p, 0)
+        if d1_levels.get(p, 0) == -2:
+            bs += DEBILITATION_PENALTY
+        return bs
 
         # Special handling for nodes ------------------------------------------------
         if lord in (const._RAHU, const._KETU):
