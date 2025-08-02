@@ -359,7 +359,7 @@ def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
     _p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
     _asc_house = next((i for i, cell in enumerate(_h2p) if 'L' in str(cell).split('/')), None)
 
-        p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
+    p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
 
 
     def _varga_level(chart_key: str, planet: int) -> int | None:
