@@ -308,7 +308,8 @@ def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int
     score = 0
     # Rāja‑yoga participation
     try:
-        for p1, p2 in jd_raja_yoga_pairs := jd_raja.get_raja_yoga_pairs(h2p):
+        jd_raja_yoga_pairs = jd_raja.get_raja_yoga_pairs(h2p)
+        for p1, p2 in jd_raja_yoga_pairs:
             if planet in (p1, p2):
                 score += RAJA_BONUS
                 # viparīta subtype check
