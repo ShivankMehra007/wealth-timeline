@@ -54,6 +54,20 @@ RAJA_BONUS = 15
 DHANA_BONUS = 12
 VIPAREETA_BONUS = 7
 KEMADRUMA_PENALTY = -12
+# Expanded yoga bonuses (logic J)
+WEALTH_YOGA_BONUS = 8      # generic dhan/wealth‑centred yogas
+VASMATI_BONUS = 8          # Vasumatī
+VEENA_BONUS = 8            # Veena yoga
+LAKSHMI_BONUS = 10         # Lakshmi yoga
+GAJA_KESARI_BONUS = 10        # Gaja‑Kesari
+CHANDRA_MANGALA_BONUS = 10 # Chandra‑Mangala
+SUNAPHA_ANAPHA_BONUS = 6
+UBHAYACHARI_BONUS = 6
+ADHI_BONUS = 8
+PM_PURUSHA_BONUS = 12      # each of the five Mahā‑purusha yogas
+AMALA_BONUS = 6
+PARIVARTANA_DHANA_BONUS = 8
+PARIVARTANA_RAJA_BONUS = 12
 # Dosha penalties / bonuses
 COMBUST_PENALTY = -6
 WAR_WIN_BONUS = 3
@@ -384,34 +398,88 @@ def _transit_key_hit(mid: datetime, natal_pp) -> bool:
 # ────────────────────────────────────────────────────────────────
 
 def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int | None) -> int:
-    """Return cumulative bonus/penalty for yogas & doṣas involving *planet*."""
+    """Return cumulative bonus/penalty for yogas & doṣas involving *planet*.
+
+    The function now covers 25+ classical wealth/career yogas via PyJHora’s
+    `hora.horoscope.chart.yoga` helpers. We *only* add the bonus when the
+    yoga is present **and** the given *planet* participates (so the same
+    yoga can boost multiple planets if applicable)."""
     score = 0
-    # Rāja‑yoga participation
+    # Existing Raja / Viparīta / Dhana / Kemadruma logic ——————————————
     try:
         jd_raja_yoga_pairs = jd_raja.get_raja_yoga_pairs(h2p)
         for p1, p2 in jd_raja_yoga_pairs:
             if planet in (p1, p2):
                 score += RAJA_BONUS
-                # viparīta subtype check
                 try:
                     if jd_raja.vipareetha_raja_yoga(p2h, p1, p2):
                         score += VIPAREETA_BONUS
                 except Exception:
                     pass
-                break
+                # Dharmakarma adhipati (9th+10th) speciality
+                try:
+                    if jd_raja.dharma_karmadhipati_yoga(p2h, p1, p2):
+                        score += RAJA_BONUS  # same weight as Raja
+                except Exception:
+                    pass
     except Exception:
         pass
 
-    # Dhana‑yoga heuristic: occupant or lord of 2nd / 11th
+    # Dhana‑yoga heuristic (lord/occupant of 2 & 11)
     try:
-        if p2h.get(planet) in (1, 10):  # houses are 0‑based
+        if p2h.get(planet) in (1, 10):
             score += DHANA_BONUS
         elif any(str(planet) in str(h2p[i]).split('/') for i in (1, 10)):
             score += DHANA_BONUS
     except Exception:
         pass
 
-    # Kemadruma doṣa penalises Moon
+    # ——— Expanded wealth yogas via direct function lookup ————————
+    _yoga_map = {
+        "chandra_mangala_yoga": (CHANDRA_MANGALA_BONUS, {const._MOON, const._MARS}),
+        "sunaphaa_yoga":       (SUNAPHA_ANAPHA_BONUS, {const._MOON}),
+        "anaphaa_yoga":        (SUNAPHA_ANAPHA_BONUS, {const._MOON}),
+        "duradhara_yoga":      (SUNAPHA_ANAPHA_BONUS, {const._MOON}),
+        "vasumati_yoga":       (VASMATI_BONUS, set(range(const._SATURN + 1))),
+        "veenaa_yoga":         (VEENA_BONUS, BENEFICS_NATURAL),
+        "lakshmi_yoga":        (LAKSHMI_BONUS, BENEFICS_NATURAL),
+        "gaja_kesari_yoga":    (GAJA_KESARI_BONUS, {const._MOON, const._JUPITER}),
+        "ubhaya_chara_yoga":   (UBHAYACHARI_BONUS, {const._SUN}),
+        "adhi_yoga":           (ADHI_BONUS, BENEFICS_NATURAL),
+        "amala_yoga":          (AMALA_BONUS, set(range(const._SATURN + 1))),
+    }
+    for func_name, (wt, parts) in _yoga_map.items():
+        if planet not in parts:
+            continue
+        func = getattr(jd_yoga, func_name, None)
+        if not func:
+            continue
+        try:
+            if func(h2p, p2h, asc_house):
+                score += wt
+        except Exception:
+            pass
+
+    # ——— Pancha‑Mahā‑Purusha special check (strength‑based) ———————
+    _pmp_funcs = {
+        "ruchaka_yoga": const._MARS,
+        "bhadra_yoga":  const._MERCURY,
+        "maalavya_yoga": const._VENUS,
+        "hamsa_yoga":   const._JUPITER,
+        "sasa_yoga":    const._SATURN,
+    }
+    for fname, p in _pmp_funcs.items():
+        if planet != p:
+            continue
+        func = getattr(jd_yoga, fname, None)
+        if func:
+            try:
+                if func(h2p, p2h, asc_house):
+                    score += PM_PURUSHA_BONUS
+            except Exception:
+                pass
+
+    # Kemadruma doṣa (unchanged)
     if planet == const._MOON and asc_house is not None:
         try:
             if jd_yoga.kemadruma_yoga(h2p, p2h, asc_house):
