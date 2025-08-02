@@ -392,105 +392,165 @@ def _yoga_bonus(planet: int, h2p: List[str], p2h: Dict[int, int], asc_house: int
 
 # ════════════════════════════════════════════════════════════════
 
-def _rate_periods(vim: pd.DataFrame, nar: pd.DataFrame,
-                  sb_strengths: List[float], sav: Dict[int, int], natal_pp,
-                  vargas: Dict[str, List[str]]) -> pd.DataFrame:
+def _rate_periods(
+    vim_df: pd.DataFrame,
+    nar_df: pd.DataFrame,
+    sb_strengths: List[float],
+    sav: Dict[int, int],
+    natal_pp,
+    vargas: Dict[str, List[str]],
+) -> pd.DataFrame:
+    """Core scoring – now **adds Transit Overlay** (logic F)."""
 
     wealth_lords = {const._JUPITER, const._VENUS}
     career_lords = {const._SUN, const._MERCURY, const._SATURN, const._MARS}
 
-    # pre‑compute dignity levels of all planets in all relevant charts
-    d1_levels = {
-        p: _dignity_level(p, natal_pp[p + 1][1][0]) for p in range(const._SATURN + 1)
-    }
-
-    # helpers for yoga scoring
-    _h2p = jutils.get_house_planet_list_from_planet_positions(natal_pp)
-    _p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
-    _asc_house = next((i for i, cell in enumerate(_h2p) if 'L' in str(cell).split('/')), None)
-
-    # dosha pre‑calc
-    _combust_set, _retro_set, _war_dict = _dosha_maps(natal_pp)
+    # —— natal basics ————————————————————————————————
+    asc_sign   = natal_pp[0][1][0]
+    moon_sign  = natal_pp[const._MOON + 1][1][0]
+    tenth_sign = (asc_sign + 9) % 12
+    tenth_lord = _SIGN_LORD[tenth_sign]
 
     d1_levels = {p: _dignity_level(p, natal_pp[p + 1][1][0])
-                for p in range(const._SATURN + 1)}
+                 for p in range(const._SATURN + 1)}
 
+    _h2p = jutils.get_house_planet_list_from_planet_positions(natal_pp)
+    _p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
+    _asc_house = next((i for i, cell in enumerate(_h2p) if "L" in str(cell).split("/")), None)
+
+    _combust_set, _retro_set, _war_dict = _dosha_maps(natal_pp)
+
+    # —— helper: dignities in vargas (kept from earlier) ————————————
     def _varga_level(chart_key: str, planet: int) -> int | None:
         sign = _planet_sign_in_chart(vargas[chart_key], planet)
         return _dignity_level(planet, sign) if sign is not None else None
 
     def _divisional_bonus(planet: int) -> int:
         base = d1_levels.get(planet, 0)
-        adjustments: List[int] = []
+        adj: List[int] = []
         if planet in wealth_lords:
-            for key in ("D2", "D11"):
-                lvl = _varga_level(key, planet)
-                if lvl is not None:
-                    diff = lvl - base
-                    if diff >= 0:
-                        adjustments.append(DIV_EQUAL_BONUS)
-                    elif diff == -1:
-                        adjustments.append(DIV_MINOR_BONUS)
-                    else:
-                        adjustments.append(DIV_PENALTY)
+            for k in ("D2", "D11"):
+                lvl = _varga_level(k, planet)
+                if lvl is None:
+                    continue
+                diff = lvl - base
+                adj.append(DIV_EQUAL_BONUS if diff >= 0 else
+                           DIV_MINOR_BONUS if diff == -1 else DIV_PENALTY)
         elif planet in career_lords:
             lvl = _varga_level("D10", planet)
             if lvl is not None:
                 diff = lvl - base
-                if diff >= 0:
-                    adjustments.append(DIV_EQUAL_BONUS)
-                elif diff == -1:
-                    adjustments.append(DIV_MINOR_BONUS)
-                else:
-                    adjustments.append(DIV_PENALTY)
-        return sum(adjustments)
-        
+                adj.append(DIV_EQUAL_BONUS if diff >= 0 else
+                           DIV_MINOR_BONUS if diff == -1 else DIV_PENALTY)
+        return sum(adj)
+
+    # —— helper: single‑planet base score (re‑used for node dispositors) ——
+    def _planet_base(p: int) -> int:
+        sc = 0
+        if p in wealth_lords:
+            sc += WEALTH_LORD_WT
+        if p in career_lords:
+            sc += CAREER_LORD_WT
+        if p in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
+            sc += SAV_BONUS_WT
+        if p in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
+            sc += SAV_BONUS_WT
+        ratio = sb_strengths[p] if 0 <= p < len(sb_strengths) else 1.0
+        sc += STRENGTH_BONUS if ratio >= SHADBALA_GOOD else STRENGTH_MALUS if ratio < SHADBALA_BAD else 0
+        sc += _divisional_bonus(p)
+        sc += _yoga_bonus(p, _h2p, _p2h, _asc_house)
+        if p in _combust_set:
+            sc += COMBUST_PENALTY
+        if p in _retro_set:
+            sc += RETRO_BENEFIC_BONUS if p in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY
+        sc += _war_dict.get(p, 0)
+        if d1_levels.get(p, 0) == -2:
+            sc += DEBILITATION_PENALTY
+        return sc
+
+    # —— helper: transit overlay ————————————————————————————————
+    def _transit_bonus(mid_dt: datetime, antar_lord: int) -> tuple[int, int]:
+        """Return (delta_score, positive_hit_count)."""
+        jd_mid = jutils.julian_day_number((mid_dt.year, mid_dt.month, mid_dt.day),
+                                          (mid_dt.hour, mid_dt.minute, mid_dt.second))
+        tr_pp  = _planet_positions(jd_mid, _build_place("geo", 0.0, 0.0, 0.0))
+        tr_sign = lambda pid: _sign_of_longitude(tr_pp[pid + 1][1][1])
+
+        jup_s, sat_s, mars_s = map(tr_sign, (const._JUPITER, const._SATURN, const._MARS))
+        rahu_s = tr_sign(const._RAHU)
+        ketu_s = (rahu_s + 6) % 12
+
+        positives = 0
+        delta = 0
+
+        # Jupiter aspect 5/9 on Lagna or antar‑lord natal sign
+        natal_al_sign = natal_pp[antar_lord + 1][1][0]
+        if ((jup_s - asc_sign) % 12 in (4, 8)) or ((jup_s - natal_al_sign) % 12 in (4, 8)):
+            delta += 5
+            positives += 1
+
+        # Saturn kantaka (4/8) or sade‑sati start/end
+        if (sat_s - asc_sign) % 12 in (3, 7):
+            delta -= 7
+        if (sat_s - moon_sign) % 12 in (11, 1):
+            delta -= 7
+
+        # Mars aspect/conjunction on 10th‑lord
+        diff_m = (mars_s - natal_pp[tenth_lord + 1][1][0]) % 12
+        if diff_m in (0, 4, 8):
+            if tenth_lord in BENEFICS_NATURAL:
+                delta += 3
+                positives += 1
+            else:
+                delta -= 3
+
+        # Node conjunct 2nd/11th cusp
+        for n_sign in (rahu_s, ketu_s):
+            if n_sign in ((asc_sign + 1) % 12, (asc_sign + 10) % 12):
+                dispos = _SIGN_LORD[n_sign]
+                strong = d1_levels.get(dispos, 0) >= 1
+                delta += 4 if strong else -4
+                if strong:
+                    positives += 1
+
+        return delta, positives
+
+    # —— main row scorer ————————————————————————————————
     def _score(row) -> Dict[str, object]:
         start, end, lord = row.start, row.end, row.lord
         mid = start + (end - start) / 2
-        score = 0
 
-        # lordship
-        if lord in wealth_lords:
-            score += WEALTH_LORD_WT
-        if lord in career_lords:
-            score += CAREER_LORD_WT
+        # ① base score (handles nodes internally)
+        if lord in (const._RAHU, const._KETU):
+            node_sign = natal_pp[lord + 1][1][0]
+            dispositor = _SIGN_LORD[node_sign]
+            score = _planet_base(dispositor)
+            house_idx = _p2h.get(lord, None)
+            if house_idx in (2, 5, 10):         # 3/6/11 from Lagna
+                score += 6
+            elif house_idx in (3, 4, 7, 11):    # 4/5/8/12
+                score -= 6
+            if house_idx == 9 and d1_levels.get(dispositor, 0) >= 2:
+                score += 4
+        else:
+            score = _planet_base(lord)
 
-        # Sarva‑aṣṭakavarga support
-        if lord in wealth_lords and all(sav.get(h, 0) >= SAV_WEALTH_TH for h in (2, 11)):
-            score += SAV_BONUS_WT
-        if lord in career_lords and sav.get(10, 0) >= SAV_CAREER_TH:
-            score += SAV_BONUS_WT
+        # ② transit overlay
+        t_delta, t_pos = _transit_bonus(mid, lord)
+        score += t_delta
 
-        # Śad‑bala strength
-        sb_ratio = sb_strengths[lord] if 0 <= lord < len(sb_strengths) else 1.0
-        if sb_ratio >= SHADBALA_GOOD:
-            score += STRENGTH_BONUS
-        elif sb_ratio < SHADBALA_BAD:
-            score += STRENGTH_MALUS
-
-                # NEW: Divisional‑chart confirmation & yogas
-        score += _divisional_bonus(lord)
-        score += _yoga_bonus(lord, _h2p, _p2h, _asc_house)
-
-        # Dosha flags
-        if lord in _combust_set:
-            score += COMBUST_PENALTY
-        if lord in _retro_set:
-            score += (RETRO_BENEFIC_BONUS if lord in BENEFICS_NATURAL else RETRO_MALEFIC_PENALTY)
-        score += _war_dict.get(lord, 0)
-        if d1_levels.get(lord, 0) == -2:
-            score += DEBILITATION_PENALTY
-
-        # label & transit veto
+        # ③ final label with cap rule
         label = next(lbl for lbl, th in LABELS if score >= th)
-        if label == "EXCELLENT" and not _transit_key_hit(mid, natal_pp):
+        if t_pos == 0 and score >= 35:  # no positives, cap at GOOD
+            label = "GOOD"
+        elif label == "EXCELLENT" and (asc_sign not in (jup_s, sat_s)):
+            # previous veto logic – keep as safety (rare overlap)
             label = "GOOD" if score >= 40 else "NEUTRAL"
 
-        return dict(period=f"{start.date()} → {end.date()}", rating=label)
+        return {"period": f"{start.date()} → {end.date()}", "rating": label}
 
-    combined = pd.concat([vim, nar], ignore_index=True)
-    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)])        
+    combined = pd.concat([vim_df, nar_df], ignore_index=True)
+    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)]) for r in combined.itertuples(index=False)])        
 
     def planet_base(p: int) -> int:
         """Core score for a given planet using same rules (lordship→dosha)"""
