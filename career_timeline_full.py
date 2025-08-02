@@ -474,11 +474,17 @@ def _rate_periods(
         jd_mid = jutils.julian_day_number((mid_dt.year, mid_dt.month, mid_dt.day),
                                           (mid_dt.hour, mid_dt.minute, mid_dt.second))
         tr_pp  = _planet_positions(jd_mid, _build_place("geo", 0.0, 0.0, 0.0))
-        tr_sign = lambda pid: _sign_of_longitude(tr_pp[pid + 1][1][1])
+        def tr_sign(pid: int):
+            try:
+                return _sign_of_longitude(tr_pp[pid + 1][1][1])
+            except (IndexError, TypeError):
+                return None
 
-        jup_s, sat_s, mars_s = map(tr_sign, (const._JUPITER, const._SATURN, const._MARS))
-        rahu_s = tr_sign(const._RAHU)
-        ketu_s = (rahu_s + 6) % 12
+        jup_s  = tr_sign(const._JUPITER)
+        sat_s  = tr_sign(const._SATURN)
+        mars_s = tr_sign(const._MARS)
+        rahu_s = tr_sign(const._RAHU) if hasattr(const, "_RAHU") else None
+        ketu_s = (rahu_s + 6) % 12 if rahu_s is not None else None
 
         positives = 0
         delta = 0
@@ -506,6 +512,8 @@ def _rate_periods(
 
         # Node conjunct 2nd/11th cusp
         for n_sign in (rahu_s, ketu_s):
+            if n_sign is None:
+                continue
             if n_sign in ((asc_sign + 1) % 12, (asc_sign + 10) % 12):
                 dispos = _SIGN_LORD[n_sign]
                 strong = d1_levels.get(dispos, 0) >= 1
@@ -550,7 +558,7 @@ def _rate_periods(
         return {"period": f"{start.date()} → {end.date()}", "rating": label}
 
     combined = pd.concat([vim_df, nar_df], ignore_index=True)
-    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)])        
+    return pd.DataFrame([_score(r) for r in combined.itertuples(index=False)])])        
 
     def planet_base(p: int) -> int:
         """Core score for a given planet using same rules (lordship→dosha)"""
