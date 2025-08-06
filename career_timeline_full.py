@@ -109,14 +109,13 @@ FUNC_NEUT = "0"   # mixed/neutral
 
 LABELS: tuple[tuple[str, int], ...] = (
     ("EXTREMELY GOOD", 80),
-    ("VERY VERY GOOD", 60),
-    ("VERY GOOD", 40),
-    ("GOOD", 20),
-    ("SLIGHTLY GOOD", 0),
-    ("SLIGHTLY BAD", -20),
+    ("VERY GOOD", 60),
+    ("GOOD", 40),
+    ("SLIGHTLY ABOVE AVERAGE", 20),
+    ("AVERAGE", 0),
+    ("SLIGHTLY BELOW AVERAGE", -20),
     ("BAD", -40),
     ("VERY BAD", -60),
-    ("VERY VERY BAD", -80),
     ("EXTREMELY BAD", -999),
 )
 
