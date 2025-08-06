@@ -108,10 +108,16 @@ FUNC_NEUT = "0"   # mixed/neutral
 
 
 LABELS: tuple[tuple[str, int], ...] = (
-    ("EXCELLENT", 50),
-    ("GOOD",       35),
-    ("NEUTRAL",    20),
-    ("CHALLENGED",  0),
+    ("EXTREMELY GOOD", 80),
+    ("VERY VERY GOOD", 60),
+    ("VERY GOOD", 40),
+    ("GOOD", 20),
+    ("SLIGHTLY GOOD", 0),
+    ("SLIGHTLY BAD", -20),
+    ("BAD", -40),
+    ("VERY BAD", -60),
+    ("VERY VERY BAD", -80),
+    ("EXTREMELY BAD", -999),
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -688,8 +694,9 @@ def _rate_periods(
 
         # ③ final label with cap rule
         label = next(lbl for lbl, th in LABELS if score >= th)
-        if t_pos == 0 and score >= 35:  # no positives, cap at GOOD
-            label = "GOOD"
+        # downgrade rule: zero positive transits ⇒ at most VERY VERY GOOD
+        if t_pos == 0 and label == "EXTREMELY GOOD":
+            label = "VERY VERY GOOD"
         return {"period": f"{start.date()} → {end.date()}", "rating": label}
 
     combined = pd.concat([vim_df, nar_df], ignore_index=True)
