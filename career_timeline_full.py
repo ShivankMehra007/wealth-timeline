@@ -304,9 +304,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     asc_sign = natal_pp[0][1][0] if natal_pp and natal_pp[0] else 0
     # retro set via existing helper (degrades gracefully)
     try:
-        _comb, _retro_set, _war = _dosha_maps(natal_pp)
+        _combust_set, _retro_set, _war = _dosha_maps(natal_pp)
     except Exception:
-        _retro_set = set()
+        _combust_set, _retro_set, _war = set(), set(), {}
 
     SIGN_NAMES = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -418,7 +418,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     ll_house_no = ll_house_idx + 1
 
     # condition helpers
-    afflicted = lagna_lord_pid in _retro_set or lagna_lord_pid in _combust_set if ' _combust_set' in locals() else lagna_lord_pid in _retro_set
+    afflicted = (lagna_lord_pid in _retro_set) or (lagna_lord_pid in _combust_set)
     is_benefic = lagna_lord_pid in BENEFICS_NATURAL
     is_malefic_natural = not is_benefic
 
@@ -529,6 +529,136 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         + "</div>"
     )
 
+    # --- Weakness checks (Avasthas & Shadbala) --------------------------------
+    weak_note_html = ""
+
+    # Recommended Shadbala thresholds (virupas)
+    SHAD_THRESH = {
+        const._SUN: 300,
+        const._MOON: 360,
+        const._MARS: 300,
+        const._MERCURY: 420,
+        const._JUPITER: 390,
+        const._VENUS: 330,
+        const._SATURN: 300,
+    }
+
+    def _iter_items(obj):
+        if isinstance(obj, dict):
+            return list(obj.items())
+        if isinstance(obj, (list, tuple)):
+            out = []
+            for it in obj:
+                if isinstance(it, (list, tuple)) and len(it) >= 2:
+                    out.append((it[0], it[1]))
+            return out
+        return []
+
+    def _get_avastha_sets():
+        sets = {"bala": set(), "mrita": set(), "sushupti": set()}
+        # Baladi avasthas (Bala / Kumara / Yuva / Vriddha / Mrita)
+        for mod in (jd_strength, jd_charts):
+            for fname in ("baladi_avasthas", "get_baladi_avasthas", "baladi_avastha", "get_baladi_avastha"):
+                func = getattr(mod, fname, None)
+                if not func:
+                    continue
+                try:
+                    res = func(natal_pp)
+                    for k, v in _iter_items(res):
+                        try:
+                            pid = int(k)
+                        except Exception:
+                            try:
+                                pid = int(str(k))
+                            except Exception:
+                                continue
+                        txt = str(v).lower()
+                        if "bala" in txt:
+                            sets["bala"].add(pid)
+                        if "mrita" in txt:
+                            sets["mrita"].add(pid)
+                    break
+                except Exception:
+                    continue
+        # Jagradadi avasthas (Jagrat / Swapna / Sushupti)
+        for mod in (jd_strength, jd_charts):
+            for fname in ("jagradadi_avasthas", "jagratadi_avasthas", "get_jagradadi_avasthas", "get_jagratadi_avasthas"):
+                func = getattr(mod, fname, None)
+                if not func:
+                    continue
+                try:
+                    res = func(natal_pp)
+                    for k, v in _iter_items(res):
+                        try:
+                            pid = int(k)
+                        except Exception:
+                            try:
+                                pid = int(str(k))
+                            except Exception:
+                                continue
+                        txt = str(v).lower()
+                        if "sushupt" in txt:
+                            sets["sushupti"].add(pid)
+                    break
+                except Exception:
+                    continue
+        return sets
+
+    avs = _get_avastha_sets()
+
+    def _get_shadbala_result():
+        for fname in ("get_shad_bala", "get_shadbala", "shad_bala", "shadbala", "compute_shad_bala"):
+            func = getattr(jd_strength, fname, None)
+            if not func:
+                continue
+            try:
+                return func(natal_pp)
+            except Exception:
+                continue
+        return None
+
+    def _extract_shadbala_val(res, pid: int):
+        if res is None:
+            return None
+        if isinstance(res, dict):
+            val = res.get(pid, res.get(str(pid)))
+            if isinstance(val, (int, float)):
+                return float(val)
+            if isinstance(val, (list, tuple)) and val:
+                for item in val:
+                    if isinstance(item, (int, float)):
+                        return float(item)
+                try:
+                    return float(val[0])
+                except Exception:
+                    return None
+            try:
+                return float(val)
+            except Exception:
+                return None
+        if isinstance(res, (list, tuple)):
+            for it in res:
+                if isinstance(it, (list, tuple)) and len(it) >= 2:
+                    k, v = it[0], it[1]
+                    if k == pid or str(k) == str(pid):
+                        if isinstance(v, (int, float)):
+                            return float(v)
+                        try:
+                            return float(v)
+                        except Exception:
+                            return None
+        return None
+
+    sb_res = _get_shadbala_result()
+    sb_val = _extract_shadbala_val(sb_res, lagna_lord_pid)
+    sb_weak = False
+    if lagna_lord_pid in SHAD_THRESH and sb_val is not None:
+        sb_weak = sb_val < SHAD_THRESH[lagna_lord_pid]
+
+    weak = (lagna_lord_pid in avs["bala"]) or (lagna_lord_pid in avs["mrita"]) or (lagna_lord_pid in avs["sushupti"]) or sb_weak
+    if weak:
+        weak_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {lagna_lord_name} is weak</p>"
+
     html_out = f"""
 <div class=\"container\"> 
   <h2 class=\"h5 mb-3 text-center\">Navagraha Summary</h2>
@@ -540,7 +670,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   <div class=\"table-responsive\">
     {table_html}
   </div>
-  {reading_html}
+  {reading_html}{weak_note_html}
 </div>
 """
     return html_out
