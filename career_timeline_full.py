@@ -926,6 +926,138 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         df = pd.DataFrame(rows, columns=["planet","sign","house","house_lord","longitude","nakshatra","pada","motion"])
     # Build complete HTML fragment (table + heading); app.py will render as-is.
     table_html = df.to_html(index=False, classes="table table-striped table-sm")
+
+    # ── Reading based on Lagna-Lord house position ─────────────────────────
+    def _planet_sign(pid: int) -> int:
+        try:
+            return int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                return int(lonx // 30)
+            except Exception:
+                return 0
+
+    lagna_sign = asc_sign
+    lagna_lord_pid = _SIGN_LORD[lagna_sign]
+    lagna_lord_name = PLANET_NAMES.get(lagna_lord_pid, str(lagna_lord_pid))
+    ll_house_idx = p2h.get(lagna_lord_pid)
+    if ll_house_idx is None:
+        ll_house_idx = (_planet_sign(lagna_lord_pid) - lagna_sign) % 12
+    ll_house_no = ll_house_idx + 1
+
+    # condition helpers
+    afflicted = lagna_lord_pid in _retro_set or lagna_lord_pid in _combust_set if ' _combust_set' in locals() else lagna_lord_pid in _retro_set
+    is_benefic = lagna_lord_pid in BENEFICS_NATURAL
+    is_malefic_natural = not is_benefic
+
+    # 8th-lord nature (for house 8 note)
+    h8_sign = (lagna_sign + 7) % 12
+    h8_lord = _SIGN_LORD[h8_sign]
+    h8_is_benefic = h8_lord in BENEFICS_NATURAL
+
+    # benefic presence in 12th (association surrogate)
+    has_benefic_in_12 = any(p2h.get(p) == 11 for p in BENEFICS_NATURAL)
+
+    SIGN_TXT = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading_lines: list[str] = []
+    header = f"Lagna lord {lagna_lord_name} is in the {SIGN_TXT[ll_house_idx]} house."
+
+    if ll_house_no == 1:
+        reading_lines += [
+            "Sound health and longevity; courageous and valorous.",
+            "Thoughtful yet fickle mind; relationships can be unstable.",
+            "Tendency toward multiple partnerships or adultery.",
+            "Owns and benefits from land/property.",
+        ]
+    elif ll_house_no == 2:
+        reading_lines += [
+            "Learned and prosperous; religious inclination and sobriety.",
+            "Self‑respecting with multiple spouses/alliances possible.",
+            "Many virtues; gains specifically through land, vehicles or livestock.",
+        ]
+    elif ll_house_no == 3:
+        reading_lines += [
+            "Very courageous—lion‑like—prosperous and wise.",
+            "Self‑respecting; two marriages/alliances are possible.",
+            "Strong support from siblings and relatives.",
+        ]
+    elif ll_house_no == 4:
+        reading_lines += [
+            "Comforts and property through mother/home; several brothers indicated.",
+            "Sensual yet virtuous; good looks; long‑lived; devoted to both parents.",
+            "Light appetite.",
+        ]
+    elif ll_house_no == 5:
+        reading_lines += [
+            "Quick to anger and proud; honoured by rulers/superiors.",
+            "Ordinary comfort from children; risk that the first‑born may not survive.",
+            "Long‑lived and inclined to virtuous deeds.",
+        ]
+    elif ll_house_no == 6:
+        if afflicted:
+            reading_lines += [
+                "When afflicted: poor health and troubles from enemies/rivals.",
+            ]
+        else:
+            reading_lines += [
+                "Good health; destroys opponents; frugal and wealthy; gains from land/work.",
+            ]
+
+    elif ll_house_no == 7:
+        reading_lines += [
+            "Brilliant and attractive; spouse good‑looking and good‑natured.",
+        ]
+        if is_malefic_natural:
+            reading_lines += [
+                "Because the lagna‑lord is a natural malefic: risk of separation/bereft of spouse, detachment, poverty or kingship, and wandering in foreign lands.",
+            ]
+    elif ll_house_no == 8:
+        reading_lines += [
+            "Long‑lived and can accumulate wealth, yet prone to ill‑health.",
+            "Adulterous tendencies; theft/gambling risks; quick temper; good for spiritual pursuits.",
+        ]
+        reading_lines += [
+            ("Eye diseases/strain are likely." if not h8_is_benefic else "Good looks/appearance from benefic 8th‑lord influence."),
+        ]
+    elif ll_house_no == 9:
+        reading_lines += [
+            "Fortunate and learned; beloved of people; devotion to Viṣṇu or structured worship.",
+            "Endowed with wife, sons and wealth; very famous.",
+        ]
+    elif ll_house_no == 10:
+        reading_lines += [
+            "Learned; honoured by rulers; full comforts from father; fame and wealth through own prowess.",
+        ]
+    elif ll_house_no == 11:
+        reading_lines += [
+            "Manifold gains and good qualities; multiple wives; famous; sons long‑lived; lives in comfort.",
+        ]
+    elif ll_house_no == 12:
+        reading_lines += [
+            "Bereft of bodily comforts; engaged in unworthy pursuits; foreign residence/work likely.",
+        ]
+        if not has_benefic_in_12:
+            reading_lines += [
+                "With no benefic support on the 12th: futile expenditure and easy anger.",
+            ]
+        else:
+            reading_lines += [
+                "Benefic association/aspect on the 12th reduces the affliction.",
+            ]
+
+
+    reading_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Lagna-lord</h3>"
+        f"<p class='text-center mb-1'><em>{header}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_lines)
+        + "</div>"
+    )
+
     html_out = f"""
 <div class=\"container\"> 
   <h2 class=\"h5 mb-3 text-center\">Navagraha Summary</h2>
@@ -937,6 +1069,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   <div class=\"table-responsive\">
     {table_html}
   </div>
+  {reading_html}
 </div>
 """
     return html_out
