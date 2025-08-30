@@ -1,18 +1,17 @@
 # app.py
 from flask import Flask, request, render_template_string, jsonify, Response
 from markupsafe import Markup
-import json, html
+import inspect, json, html
 
 try:
-    import pandas as pd  # optional; only used if your function returns a DataFrame
-except Exception:  # pragma: no cover
+    import pandas as pd
+except Exception:
     pd = None
 
 from career_timeline_full import timeline_from_args
 
 app = Flask(__name__)
 
-# Minimal page shell used only when we need to wrap an HTML fragment
 BASE = """<!doctype html>
 <html>
   <head>
@@ -37,6 +36,12 @@ BASE = """<!doctype html>
           <form method="post" action="/timeline" class="card card-body gap-2">
             <div class="help mb-2">
               Enter birth details. Latitude/Longitude preferred; timezone like <code>+05:30</code>.
+            </div>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label">Name</label>
+                <input type="text" name="name" class="form-control" placeholder="Anonymous">
+              </div>
             </div>
             <div class="row g-2">
               <div class="col-6">
@@ -68,7 +73,6 @@ BASE = """<!doctype html>
                 <input type="text" name="place" class="form-control" placeholder="City, Country">
               </div>
             </div>
-            <!-- add hidden inputs if your backend expects more fields -->
             <button type="submit" class="btn btn-primary mt-2">Compute</button>
           </form>
         </div>
@@ -82,52 +86,70 @@ BASE = """<!doctype html>
 """
 
 def _render_any(value):
-    """Render any return type from timeline_from_args into an HTML response."""
-    # 1) If it’s an HTML string
     if isinstance(value, str):
         s = value.lstrip()
         low = s.lower()
-        # If it's a complete HTML document, send as-is
         if low.startswith("<!doctype") or "<html" in low:
             return Response(s, mimetype="text/html")
-        # Otherwise wrap the fragment into the BASE template
         return render_template_string(BASE, body=Markup(s))
-
-    # 2) Pandas DataFrame (fallback, in case the backend returns one)
     if pd is not None and isinstance(value, pd.DataFrame):
         table = value.to_html(index=False, classes="table table-striped table-sm")
         return render_template_string(BASE, body=Markup(table))
-
-    # 3) JSON-like → pretty-print for visibility
     if isinstance(value, (dict, list, tuple)):
         try:
             pretty = json.dumps(value, indent=2, default=str)
         except Exception:
             pretty = str(value)
         return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"))
-
-    # 4) Fallback: plain text
     return render_template_string(BASE, body=Markup(f"<pre>{html.escape(str(value))}</pre>"))
+
+def _sanitize_kwargs(fn, raw: dict) -> dict:
+    """Keep only parameters accepted by fn; add defaults and coerce lat/lon."""
+    sig = inspect.signature(fn)
+    params = sig.parameters
+    cleaned = {}
+
+    # copy only accepted keys
+    for k, v in (raw or {}).items():
+        if k in params:
+            cleaned[k] = v
+
+    # provide default name if required but missing/empty
+    if "name" in params and (not cleaned.get("name")):
+        cleaned["name"] = "Anonymous"
+
+    # coerce lat/lon if present
+    for fld in ("lat", "lon"):
+        if fld in cleaned:
+            try:
+                cleaned[fld] = float(str(cleaned[fld]).strip())
+            except Exception:
+                pass  # let backend handle invalid numeric
+
+    return cleaned
 
 @app.route("/", methods=["GET"])
 def home():
-    # Show the form and an empty result pane
     return render_template_string(BASE, body=Markup("<div class='help'>Results will appear here after you submit.</div>"))
 
 @app.route("/timeline", methods=["POST"])
 def timeline():
-    # Accept either JSON or form data, pass all kwargs through
     data = request.get_json(silent=True)
     if not data:
         data = request.form.to_dict() if request.form else {}
 
-    try:
-        result = timeline_from_args(**data)
-    except TypeError:
-        # In case your function takes no kwargs
-        result = timeline_from_args()
+    kwargs = _sanitize_kwargs(timeline_from_args, data)
 
-    # If client explicitly requests JSON, convert HTML to a JSON envelope
+    # Call once with sanitized kwargs; if still missing required args, show a friendly message.
+    try:
+        result = timeline_from_args(**kwargs)
+    except TypeError as e:
+        # Build an HTML error explaining which args are expected
+        expected = ", ".join(inspect.signature(timeline_from_args).parameters.keys())
+        msg = f"<div class='alert alert-danger'>Bad input: {html.escape(str(e))}<br>Expected keys: <code>{html.escape(expected)}</code></div>"
+        return render_template_string(BASE, body=Markup(msg))
+
+    # JSON mode if requested
     wants_json = request.headers.get("Accept", "").lower().startswith("application/json") \
                  or request.args.get("format") == "json"
     if wants_json:
@@ -138,7 +160,6 @@ def timeline():
                             "rows": result.to_dict(orient="records")})
         return jsonify({"data": result})
 
-    # Default: return as HTML
     return _render_any(result)
 
 # Gunicorn entrypoint: app:app
