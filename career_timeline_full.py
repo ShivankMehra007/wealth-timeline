@@ -658,6 +658,140 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     weak = (lagna_lord_pid in avs["bala"]) or (lagna_lord_pid in avs["mrita"]) or (lagna_lord_pid in avs["sushupti"]) or sb_weak
     if weak:
         weak_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {lagna_lord_name} is weak</p>"
+    # Inject note directly into the Lagna-lord reading block
+    reading_html = reading_html.replace("</div>", f"{weak_note_html}</div>")
+
+        # ── Reading based on 2nd‑house lord (wealth significator) ──────────────
+    h2_sign = (lagna_sign + 1) % 12
+    h2_lord_pid = _SIGN_LORD[h2_sign]
+    h2_lord_name = PLANET_NAMES.get(h2_lord_pid, str(h2_lord_pid))
+    h2l_house_idx = p2h.get(h2_lord_pid)
+    if h2l_house_idx is None:
+        h2l_house_idx = (_planet_sign(h2_lord_pid) - lagna_sign) % 12
+    h2l_house_no = h2l_house_idx + 1
+
+    # helpers for conditions
+    def _planets_in_house(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    NAT_MALEFICS = {const._SUN, const._MARS, const._SATURN, getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)}
+    is_h2_benefic = h2_lord_pid in BENEFICS_NATURAL
+    is_h2_malefic_nat = h2_lord_pid in NAT_MALEFICS
+
+    in_same_house = set(_planets_in_house(h2l_house_idx)) - {h2_lord_pid}
+    has_malefic_assoc = any(p in NAT_MALEFICS for p in in_same_house)
+
+    # exaltation check for 2nd‑lord
+    try:
+        h2_lord_sign_now = int(natal_pp[h2_lord_pid + 1][1][0])
+    except Exception:
+        try:
+            _lon_tmp = float(natal_pp[h2_lord_pid + 1][1][1]) % 360.0
+            h2_lord_sign_now = int(_lon_tmp // 30)
+        except Exception:
+            h2_lord_sign_now = (lagna_sign + h2l_house_idx) % 12
+    is_exalted_h2 = (_EXALTS.get(h2_lord_pid) == h2_lord_sign_now)
+
+    # association with Jupiter/Venus in the same house as 2nd‑lord
+    has_guru_shukra_assoc = any(p in (const._JUPITER, const._VENUS) for p in in_same_house)
+
+    SIGN_TXT2 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading2_lines: list[str] = []
+    header2 = f"2nd‑house lord {h2_lord_name} is in the {SIGN_TXT2[h2l_house_idx]} house."
+
+    if h2l_house_no == 1:
+        reading2_lines += [
+            "Wealthy and thrifty; harsh in temperament; enjoys many comforts.",
+            "Endowed with sons; generous to others yet troublesome to own family.",
+        ]
+    elif h2l_house_no == 2:
+        reading2_lines += [
+            "Wealthy; earns well; enjoys comforts; proud.",
+            "Two or three marriages/alliances likely; childlessness is possible; inclined to oppose others.",
+        ]
+    elif h2l_house_no == 3:
+        reading2_lines += [
+            "Virtuous, wise, valorous, but greedy and sensuous.",
+        ]
+        if is_h2_malefic_nat:
+            reading2_lines.append("As a natural malefic 2nd‑lord in the 3rd: differences with co‑borns.")
+        if is_h2_benefic:
+            reading2_lines.append("As a natural benefic 2nd‑lord in the 3rd: opposed to the ruler.")
+        if h2_lord_pid == const._MARS:
+            reading2_lines.append("Mars as 2nd‑lord in the 3rd: thief‑like tendencies.")
+        if has_malefic_assoc:
+            reading2_lines.append("2nd‑lord joined malefics in the 3rd: speaks ill of the devas/virtuous.")
+    elif h2l_house_no == 4:
+        reading2_lines += [
+            "Endowed with wealth; truthful; long‑lived; benefits from father.",
+        ]
+        if is_exalted_h2 or has_guru_shukra_assoc:
+            reading2_lines.append("If exalted or joined by Jupiter/Venus: status akin to a king.")
+        if h2_lord_pid == const._MARS:
+            reading2_lines.append("Mars as 2nd‑lord in the 4th is a maraka (death‑inflicting).")
+    elif h2l_house_no == 5:
+        reading2_lines += [
+            "Wealthy; famed for efficiency; blessed with several sons; capable of earning greatly; health is delicate.",
+        ]
+    elif h2l_house_no == 6:
+        reading2_lines += [
+            "Accumulates wealth; destroys enemies; profits through enemy matters/litigation.",
+        ]
+        if has_malefic_assoc:
+            reading2_lines.append("With malefic association: loss of wealth; disease of anal region and breast.")
+    elif h2l_house_no == 7:
+        reading2_lines += [
+            "Sensuous; spouse contributes to income (money‑earning wife).",
+            "The native and spouse are prone to adultery.",
+        ]
+        if has_malefic_assoc:
+            reading2_lines.append("Afflicted by malefics: becomes a physician.")
+    elif h2l_house_no == 8:
+        reading2_lines += [
+            "Income from land/property; reduced comforts from wife; no support from elder brother; harmful to others.",
+            "Lives on alms/charity; suicidal tendencies may arise.",
+        ]
+    elif h2l_house_no == 9:
+        reading2_lines += [
+            "Wealthy and industrious; childhood ill‑health; becomes healthy and comfortable later; good orator.",
+        ]
+    elif h2l_house_no == 10:
+        reading2_lines += [
+            "Sensuous, self‑respecting, learned; many relationships; lacks comfort from progeny; gains through the ruler/state.",
+        ]
+    elif h2l_house_no == 11:
+        reading2_lines += [
+            "Well‑known, efficient, respectable; continuously benefitting; wealthy; supports many people’s needs.",
+        ]
+    elif h2l_house_no == 12:
+        reading2_lines += [
+            "Courageous and laborious; deprived of comfort from the eldest child; likely to lose wealth.",
+        ]
+        if is_h2_benefic:
+            reading2_lines.append("As a natural benefic 2nd‑lord in the 12th: renowned trader.")
+
+    reading2_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 2nd‑house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header2}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading2_lines)
+        + "</div>"
+    )
+
+    # Weakness checks for 2nd‑house lord (Avasthas & Shadbala)
+    weak2_note_html = ""
+    sb2_val = _extract_shadbala_val(sb_res, h2_lord_pid)
+    sb2_weak = False
+    if h2_lord_pid in SHAD_THRESH and sb2_val is not None:
+        sb2_weak = sb2_val < SHAD_THRESH[h2_lord_pid]
+    weak2 = (h2_lord_pid in avs["bala"]) or (h2_lord_pid in avs["mrita"]) or (h2_lord_pid in avs["sushupti"]) or sb2_weak
+    if weak2:
+        weak2_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {h2_lord_name} is weak</p>"
+    # Inject note directly into the 2nd-lord reading block
+    reading2_html = reading2_html.replace("</div>", f"{weak2_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
@@ -667,10 +801,11 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     .table {{ margin-left: auto; margin-right: auto; }}
     .table th, .table td {{ text-align: center !important; vertical-align: middle; }}
   </style>
-  <div class=\"table-responsive\">
+  <div class=\"table-responsive\"> 
     {table_html}
   </div>
-  {reading_html}{weak_note_html}
+  {reading_html}
+  {reading2_html}
 </div>
 """
     return html_out
