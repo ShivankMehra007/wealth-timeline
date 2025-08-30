@@ -923,7 +923,18 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "motion": motion,
         })
 
-    return pd.DataFrame(rows, columns=["planet","sign","house","house_lord","longitude","nakshatra","pada","motion"])
+    df = pd.DataFrame(rows, columns=["planet","sign","house","house_lord","longitude","nakshatra","pada","motion"])
+# Build complete HTML fragment (table + heading); app.py will render as-is.
+table_html = df.to_html(index=False, classes="table table-striped table-sm")
+html_out = f"""
+<div class=\"container\">
+  <h2 class=\"h5 mb-3\">Navagraha Summary</h2>
+  <div class=\"table-responsive\">
+    {table_html}
+  </div>
+</div>
+"""
+return html_out
 
 # ═══════════════════════════════════════════════════════════════════════════
 # simple CLI for ad‑hoc testing (unchanged surface)
