@@ -293,23 +293,6 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                                         (dob.hour, dob.minute, dob.second))
 
     natal_pp = _planet_positions(jd_birth, place)
-    sav = _sav_scores(jutils.get_house_planet_list_from_planet_positions(natal_pp))
-    sb_strengths = jd_strength.shad_bala(jd_birth, place)[8]
-
-    # Prepare divisional charts once (sign lists)
-    vargas = {
-        "D2": jutils.get_house_planet_list_from_planet_positions(
-            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=2)
-        ),
-        "D10": jutils.get_house_planet_list_from_planet_positions(
-            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=10)
-        ),
-        "D11": jutils.get_house_planet_list_from_planet_positions(
-            jd_charts.divisional_chart(jd_birth, place, divisional_chart_factor=11)
-        ),
-    }
-
-    vim_df, nar_df = _dashas(dob, place)
 
     # === Planetary Summary Output (Vedic Navagraha) ===
     try:
