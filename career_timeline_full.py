@@ -931,8 +931,8 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   <h2 class=\"h5 mb-3 text-center\">Navagraha Summary</h2>
   <style>
     /* center-align entire table and all headers/cells */
-    .table { margin-left: auto; margin-right: auto; }
-    .table th, .table td { text-align: center !important; vertical-align: middle; }
+    .table {{ margin-left: auto; margin-right: auto; }}
+    .table th, .table td {{ text-align: center !important; vertical-align: middle; }}
   </style>
   <div class=\"table-responsive\">
     {table_html}
