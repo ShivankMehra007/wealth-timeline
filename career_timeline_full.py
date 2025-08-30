@@ -118,10 +118,6 @@ LABELS: tuple[tuple[str, int], ...] = (
     ("VERY BAD", -60),
     ("VERY VERY BAD", -80),
     ("EXTREMELY BAD", -999),
-),
-    ("GOOD",       35),
-    ("NEUTRAL",    20),
-    ("CHALLENGED",  0),
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
