@@ -713,7 +713,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md1_note_html = ""
     if md1:
         _s, _e = md1
-        md1_note_html = f"<p class='text-center mt-2'><strong>The above predictions are likely to happen in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
+        md1_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
 
     reading_html = reading_html.replace("</div>", f"{md1_note_html}{weak_note_html}</div>")
 
@@ -851,7 +851,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md2_note_html = ""
     if md2:
         _s2, _e2 = md2
-        md2_note_html = f"<p class='text-center mt-2'><strong>The above predictions are likely to happen in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%m-%d} – {_e2:%Y-%m-%d}</p>"
+        md2_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%m-%d} – {_e2:%Y-%m-%d}</p>"
 
     reading2_html = reading2_html.replace("</div>", f"{md2_note_html}{weak2_note_html}</div>")
 
