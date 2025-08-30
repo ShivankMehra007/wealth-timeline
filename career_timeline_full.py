@@ -109,14 +109,19 @@ FUNC_NEUT = "0"   # mixed/neutral
 
 LABELS: tuple[tuple[str, int], ...] = (
     ("EXTREMELY GOOD", 80),
-    ("VERY GOOD", 60),
-    ("GOOD", 40),
-    ("SLIGHTLY ABOVE AVERAGE", 20),
-    ("AVERAGE", 0),
-    ("SLIGHTLY BELOW AVERAGE", -20),
+    ("VERY VERY GOOD", 60),
+    ("VERY GOOD", 40),
+    ("GOOD", 20),
+    ("SLIGHTLY GOOD", 0),
+    ("SLIGHTLY BAD", -20),
     ("BAD", -40),
     ("VERY BAD", -60),
+    ("VERY VERY BAD", -80),
     ("EXTREMELY BAD", -999),
+),
+    ("GOOD",       35),
+    ("NEUTRAL",    20),
+    ("CHALLENGED",  0),
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -822,7 +827,107 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     vim_df, nar_df = _dashas(dob, place)
 
-    return _rate_periods(vim_df, nar_df, sb_strengths, sav, natal_pp, vargas)
+    # === Planetary Summary Output (Vedic Navagraha) ===
+    try:
+        h2p = jutils.get_house_planet_list_from_planet_positions(natal_pp)
+        p2h = jutils.get_planet_house_dictionary_from_planet_positions(natal_pp)
+    except Exception:
+        h2p, p2h = [], {}
+
+    asc_sign = natal_pp[0][1][0] if natal_pp and natal_pp[0] else 0
+    # retro set via existing helper (degrades gracefully)
+    try:
+        _comb, _retro_set, _war = _dosha_maps(natal_pp)
+    except Exception:
+        _retro_set = set()
+
+    SIGN_NAMES = [
+        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+    ]
+    PLANET_NAMES = {
+        const._SUN: "Sun", const._MOON: "Moon", const._MARS: "Mars",
+        const._MERCURY: "Mercury", const._JUPITER: "Jupiter", const._VENUS: "Venus",
+        const._SATURN: "Saturn", getattr(const, "_RAHU", 7): "Rahu", getattr(const, "_KETU", 8): "Ketu",
+    }
+    NAKS = [
+        "Ashwini","Bharani","Krittika","Rohini","Mrigashirsha","Ardra","Punarvasu","Pushya","Ashlesha",
+        "Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha",
+        "Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"
+    ]
+    SEG = 360.0 / 27.0
+    QTR = SEG / 4.0
+
+    rows = []
+    navagraha = [const._SUN, const._MOON, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN]
+    # include nodes if available in constants
+    if hasattr(const, "_RAHU"):
+        navagraha.append(const._RAHU)
+    if hasattr(const, "_KETU"):
+        navagraha.append(const._KETU)
+
+    for pid in navagraha:
+        # guard for presence in natal_pp structure
+        idx = pid + 1
+        if idx >= len(natal_pp) or not natal_pp[idx]:
+            continue
+        try:
+            sign_idx = int(natal_pp[idx][1][0])
+        except Exception:
+            # derive from longitude if needed
+            try:
+                lon = float(natal_pp[idx][1][1]) % 360.0
+                sign_idx = int(lon // 30)
+            except Exception:
+                sign_idx = 0
+        sign_name = SIGN_NAMES[sign_idx]
+
+        # longitude & in-sign degree
+        try:
+            lon = float(natal_pp[idx][1][1]) % 360.0
+        except Exception:
+            lon = float(sign_idx * 30.0)
+        within = lon - (sign_idx * 30.0)
+        d = int(within)
+        m = int(round((within - d) * 60))
+        if m == 60:
+            d += 1; m = 0
+        longitude_str = f"{d:02d}°{m:02d}′ {sign_name}"
+
+        # nakshatra & pada
+        nak_idx = int((lon // SEG) % 27)
+        rem = (lon % SEG)
+        pada = int(rem // QTR) + 1
+        nak_name = NAKS[nak_idx]
+
+        # house number (whole-sign by default)
+        house_idx = p2h.get(pid)
+        if house_idx is None:
+            house_idx = (sign_idx - asc_sign) % 12
+        house_no = house_idx + 1
+
+        # lord of that house (rashi lord)
+        house_sign = (asc_sign + house_idx) % 12
+        try:
+            house_lord_pid = _SIGN_LORD[house_sign]
+            house_lord = PLANET_NAMES.get(house_lord_pid, str(house_lord_pid))
+        except Exception:
+            house_lord = "?"
+
+        motion = "Retrograde" if pid in _retro_set or pid in (getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)) else "Direct"
+
+        rows.append({
+            "planet": PLANET_NAMES.get(pid, str(pid)),
+            "sign": sign_name,
+            "house": house_no,
+            "house_lord": house_lord,
+            "longitude": longitude_str,
+            "nakshatra": nak_name,
+            "pada": pada,
+            "motion": motion,
+        })
+
+    return pd.DataFrame(rows, columns=["planet","sign","house","house_lord","longitude","nakshatra","pada","motion"])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # simple CLI for ad‑hoc testing (unchanged surface)
