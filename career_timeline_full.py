@@ -659,7 +659,63 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     if weak:
         weak_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {lagna_lord_name} is weak</p>"
     # Inject note directly into the Lagna-lord reading block
-    reading_html = reading_html.replace("</div>", f"{weak_note_html}</div>")
+    # --- Mahadasha note for Lagna-lord --------------------------------------
+    def _get_lon(pid: int) -> float:
+        try:
+            return float(natal_pp[pid + 1][1][1]) % 360.0
+        except Exception:
+            try:
+                # derive from sign when longitude missing
+                sidx = int(natal_pp[pid + 1][1][0])
+                return float(sidx * 30.0)
+            except Exception:
+                return 0.0
+
+    def _md_period_for(target_pid: int):
+        """Return (start_dt, end_dt) of the Mahadasha of target_pid after birth (including birth if applicable)."""
+        # Vimshottari order and year lengths
+        KETU = getattr(const, "_KETU", -2)
+        RAHU = getattr(const, "_RAHU", -1)
+        order = [KETU, const._VENUS, const._SUN, const._MOON, const._MARS, RAHU, const._JUPITER, const._SATURN, const._MERCURY]
+        years = {KETU:7, const._VENUS:20, const._SUN:6, const._MOON:10, const._MARS:7, RAHU:18, const._JUPITER:16, const._SATURN:19, const._MERCURY:17}
+        # Moon nakshatra at birth -> starting lord & balance
+        moon_lon = _get_lon(const._MOON)
+        SEG = 360.0 / 27.0
+        nak_idx = int(moon_lon // SEG) % 27
+        start_lord = order[nak_idx % 9]
+        frac = (moon_lon % SEG) / SEG  # elapsed fraction within nakshatra
+        elapsed_yrs = frac * years[start_lord]
+        remain_yrs = years[start_lord] - elapsed_yrs
+        DAYS_PER_YEAR = 365.2425
+        start_dt = dob - timedelta(days=elapsed_yrs * DAYS_PER_YEAR)
+        end_dt = dob + timedelta(days=remain_yrs * DAYS_PER_YEAR)
+        # build forward list up to ~120y from start
+        seq = []
+        seq.append((start_lord, start_dt, end_dt))
+        idx = (order.index(start_lord) + 1) % 9
+        cur_start = end_dt
+        total_yrs = remain_yrs
+        while total_yrs < 121:  # little buffer
+            lord = order[idx]
+            dur = years[lord]
+            cur_end = cur_start + timedelta(days=dur * DAYS_PER_YEAR)
+            seq.append((lord, cur_start, cur_end))
+            cur_start = cur_end
+            total_yrs += dur
+            idx = (idx + 1) % 9
+        # pick the MD for target_pid that ends after birth
+        for lord, s, e in seq:
+            if lord == target_pid and e > dob:
+                return (s, e)
+        return None
+
+    md1 = _md_period_for(lagna_lord_pid)
+    md1_note_html = ""
+    if md1:
+        _s, _e = md1
+        md1_note_html = f"<p class='text-center mt-2'><strong>The above predictions are likely to happen in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
+
+    reading_html = reading_html.replace("</div>", f"{md1_note_html}{weak_note_html}</div>")
 
         # ── Reading based on 2nd‑house lord (wealth significator) ──────────────
     h2_sign = (lagna_sign + 1) % 12
@@ -791,7 +847,13 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     if weak2:
         weak2_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {h2_lord_name} is weak</p>"
     # Inject note directly into the 2nd-lord reading block
-    reading2_html = reading2_html.replace("</div>", f"{weak2_note_html}</div>")
+    md2 = _md_period_for(h2_lord_pid)
+    md2_note_html = ""
+    if md2:
+        _s2, _e2 = md2
+        md2_note_html = f"<p class='text-center mt-2'><strong>The above predictions are likely to happen in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%m-%d} – {_e2:%Y-%m-%d}</p>"
+
+    reading2_html = reading2_html.replace("</div>", f"{md2_note_html}{weak2_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
