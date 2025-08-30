@@ -855,6 +855,134 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     reading2_html = reading2_html.replace("</div>", f"{md2_note_html}{weak2_note_html}</div>")
 
+    # ── Reading based on 3rd‑house lord (siblings/effort) ──────────────
+    h3_sign = (lagna_sign + 2) % 12
+    h3_lord_pid = _SIGN_LORD[h3_sign]
+    h3_lord_name = PLANET_NAMES.get(h3_lord_pid, str(h3_lord_pid))
+    h3l_house_idx = p2h.get(h3_lord_pid)
+    if h3l_house_idx is None:
+        h3l_house_idx = (_planet_sign(h3_lord_pid) - lagna_sign) % 12
+    h3l_house_no = h3l_house_idx + 1
+
+    def _malefic_aspects_house(target_idx: int) -> bool:
+        """Return True if any natural malefic casts a classical aspect on target house.
+        Uses 7th aspect for all; plus special aspects:
+        Mars → 4th & 8th; Jupiter → 5th & 9th; Saturn → 3rd & 10th; Rahu/Ketu → 5th & 9th.
+        """
+        KETU = getattr(const, "_KETU", -2)
+        RAHU = getattr(const, "_RAHU", -1)
+        special = {
+            const._SUN: {6},              # 7th
+            const._MARS: {3, 6, 7},       # 4th, 7th, 8th (0-based offsets)
+            const._JUPITER: {4, 6, 8},    # 5th, 7th, 9th
+            const._SATURN: {2, 6, 9},     # 3rd, 7th, 10th
+            RAHU: {4, 6, 8},              # treat like Jupiter
+            KETU: {4, 6, 8},
+        }
+        for p in NAT_MALEFICS:
+            p_house = p2h.get(p)
+            if p_house is None:
+                continue
+            delta = (target_idx - p_house) % 12
+            if delta in special.get(p, {6}):
+                return True
+        return False
+
+    def _planets_in_house(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    in_same_house3 = set(_planets_in_house(h3l_house_idx)) - {h3_lord_pid}
+    has_malefic_assoc3 = any(p in {const._SUN, const._MARS, const._SATURN, getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)} for p in in_same_house3)
+    malefic_touches_3lord = has_malefic_assoc3 or _malefic_aspects_house(h3l_house_idx)
+
+    SIGN_TXT3 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading3_lines: list[str] = []
+    header3 = f"3rd‑house lord {h3_lord_name} is in the {SIGN_TXT3[h3l_house_idx]} house."
+
+    if h3l_house_no == 1:
+        reading3_lines += [
+            "Courageous self‑starter; wealthy and valorous.",
+            "Street‑smart but not formally educated; leans toward adultery; risk of forgery/cheating.",
+        ]
+    elif h3l_house_no == 2:
+        reading3_lines += [
+            "Covets others’ spouse and wealth; lacks valour; obese/indulgent.",
+            "Reluctant to initiate ventures; deprived of comforts; short‑lived indications; opposed to own people.",
+        ]
+    elif h3l_house_no == 3:
+        reading3_lines += [
+            "Healthy and valorous; enjoys support from siblings.",
+            "Blessed with sons, wealth and comforts; family and friends are helpful; devout toward teachers and deities.",
+        ]
+    elif h3l_house_no == 4:
+        reading3_lines += [
+            "Enjoys comforts; wealthy and wise; strained bond with mother; spouse tends to be harsh/cruel.",
+        ]
+    elif h3l_house_no == 5:
+        reading3_lines += [
+            "Virtuous; blessed with sons; long‑lived; constantly helps others.",
+        ]
+        if malefic_touches_3lord:
+            reading3_lines.append("With malefic conjunction/aspect on the 3rd‑lord: spouse is cruel.")
+    elif h3l_house_no == 6:
+        reading3_lines += [
+            "Enmity with brothers; very wealthy; little comfort from maternal uncle; desire toward maternal aunt; eye troubles; sickly.",
+        ]
+    elif h3l_house_no == 7:
+        reading3_lines += [
+            "Troubled childhood but later comfortable; follower of authority; spouse is good‑natured.",
+        ]
+    elif h3l_house_no == 8:
+        reading3_lines += [
+            "Thieving tendencies; servile; danger of severe punishment from rulers; adverse outcomes for siblings.",
+        ]
+    elif h3l_house_no == 9:
+        reading3_lines += [
+            "Gains fortune through women; little comfort from father; aided by children; learned.",
+        ]
+    elif h3l_house_no == 10:
+        reading3_lines += [
+            "Earns wealth through own efforts; many comforts; responsible for (or attached to) a wicked woman; honoured by rulers.",
+        ]
+    elif h3l_house_no == 11:
+        reading3_lines += [
+            "Foolish, weak, sickly and servile, yet courageous; earns through own efforts; indulges in physical pleasures.",
+        ]
+    elif h3l_house_no == 12:
+        reading3_lines += [
+            "Spends on immoral pursuits; harsh father; gains through women; opposes relatives and friends; foreign travel/residence indicated.",
+        ]
+
+    reading3_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 3rd‑house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header3}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading3_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 3rd‑house lord
+    md3 = _md_period_for(h3_lord_pid)
+    md3_note_html = ""
+    if md3:
+        _s3, _e3 = md3
+        md3_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {h3_lord_name}:</strong> {_s3:%Y-%m-%d} – {_e3:%Y-%m-%d}</p>"
+
+    # Weakness note for 3rd‑house lord (Avasthas & Shadbala)
+    weak3_note_html = ""
+    sb3_val = _extract_shadbala_val(sb_res, h3_lord_pid)
+    sb3_weak = False
+    if h3_lord_pid in SHAD_THRESH and sb3_val is not None:
+        sb3_weak = sb3_val < SHAD_THRESH[h3_lord_pid]
+    weak3 = (h3_lord_pid in avs["bala"]) or (h3_lord_pid in avs["mrita"]) or (h3_lord_pid in avs["sushupti"]) or sb3_weak
+    if weak3:
+        weak3_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {h3_lord_name} is weak</p>"
+
+    reading3_html = reading3_html.replace("</div>", f"{md3_note_html}{weak3_note_html}</div>")
+
     html_out = f"""
 <div class=\"container\"> 
   <h2 class=\"h5 mb-3 text-center\">Navagraha Summary</h2>
@@ -868,6 +996,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   </div>
   {reading_html}
   {reading2_html}
+  {reading3_html}
 </div>
 """
     return html_out
