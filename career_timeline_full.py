@@ -1120,6 +1120,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading_html}
   {reading2_html}
   {reading3_html}
+  {reading4_html}
 </div>
 """
     return html_out
