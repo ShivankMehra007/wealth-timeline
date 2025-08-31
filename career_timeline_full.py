@@ -2083,6 +2083,117 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     # Attach MD line and weakness note inside this block
     reading12_html = reading12_html.replace("</div>", f"{md12_note_html}{weak12_note_html}</div>")
+    
+        # ── Reading based on the Sun (graha-specific) ───────────────────────────
+    sun_pid = const._SUN
+    sun_name = PLANET_NAMES.get(sun_pid, "Sun")
+
+    # Sun's house from Lagna (prefer p2h; fall back to sign-diff)
+    sun_house_idx = p2h.get(sun_pid)
+    if sun_house_idx is None:
+        sun_house_idx = (_planet_sign(sun_pid) - lagna_sign) % 12
+    sun_house_no = sun_house_idx + 1
+
+    reading_sun_lines: list[str] = []
+    header_sun = f"Sun is in the {SIGN_TXT[sun_house_idx]} house."
+
+    # House-wise meanings
+    if sun_house_no == 1:
+        reading_sun_lines += [
+            "Scant body hair; indolent; harsh/unyielding temper; easily angered; tall; proud; valiant; unforgiving; eye dryness or weak vision.",
+        ]
+        # Special Lagna conditions for Sun in 1H
+        if lagna_sign == 0:   # Aries (exaltation)
+            reading_sun_lines.append("In exalted Aries rising: poor vision is explicitly indicated.")
+        if lagna_sign == 3:   # Cancer
+            reading_sun_lines.append("In Cancer rising: cataract tendencies are classically noted.")
+        if lagna_sign == 4:   # Leo (own sign)
+            reading_sun_lines.append("In Leo rising: strong constitution but night-blindness is noted.")
+        if lagna_sign == 6:   # Libra (debilitation)
+            reading_sun_lines.append("In debilitated Libra rising: risk of blindness, poverty and poor progeny comfort.")
+        if lagna_sign == 11:  # Pisces
+            reading_sun_lines.append("In Pisces rising: served and attended by women is classically stated.")
+    elif sun_house_no == 2:
+        reading_sun_lines += [
+            "Losses through authority/state; facial/teeth ailments; speech impediment; yet capacity for great wealth.",
+        ]
+    elif sun_house_no == 3:
+        reading_sun_lines += [
+            "Valorous, wealthy, liberal, strong; may lack comfort from siblings; learned; defeats opponents.",
+        ]
+    elif sun_house_no == 4:
+        reading_sun_lines += [
+            "Deprived of home comforts; weak ties to relatives; loss of land/house; prone to cardiac issues.",
+        ]
+    elif sun_house_no == 5:
+        reading_sun_lines += [
+            "Trouble with progeny (even childlessness); shortened longevity indications; poverty/worry; wise but a wanderer.",
+            "Classically adverse for the first-born, especially a son.",
+        ]
+    elif sun_house_no == 6:
+        reading_sun_lines += [
+            "Opulent, powerful, very rich and famous; victorious; judicial/royal favour; strong digestion and appetite.",
+        ]
+    elif sun_house_no == 7:
+        reading_sun_lines += [
+            "Poverty; humiliation; unpleasant looks; ill-health; antagonism with women; transgressive behaviour.",
+        ]
+    elif sun_house_no == 8:
+        reading_sun_lines += [
+            "Loss of wealth/comforts; few children; shortened life; estrangement from kin; eye disease.",
+        ]
+    elif sun_house_no == 9:
+        reading_sun_lines += [
+            "Wealth, friends, sons and happiness; devotion to deities and Brahmins.",
+            "But adverse for father due to significator-in-house effect (Sun signifies father; 9th is father).",
+        ]
+    elif sun_house_no == 10:
+        reading_sun_lines += [
+            "Renowned, wise, powerful; very wealthy; sons and relatives prosper; completes undertakings; unconquerable; status akin to a king.",
+        ]
+    elif sun_house_no == 11:
+        reading_sun_lines += [
+            "Wealthy, powerful, efficient; enjoys varied comforts and gains.",
+        ]
+    elif sun_house_no == 12:
+        reading_sun_lines += [
+            "Physical ailments; eye disease; deviation from rightful vocation; wandering; inimical to father.",
+        ]
+
+    reading_sun_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on the Sun</h3>"
+        f"<p class='text-center mb-1'><em>{header_sun}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_sun_lines)
+        + "</div>"
+    )
+
+    # Mahadasha timing note (Sun)
+    md_sun = _md_period_for(sun_pid)
+    md_sun_note_html = ""
+    if md_sun:
+        _sS, _eS = md_sun
+        md_sun_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {sun_name}:</strong> "
+            f"{_sS:%Y-%m-%d} – {_eS:%Y-%m-%d}</p>"
+        )
+
+    # Weakness check specific to Sun (Baladi/Jagradadi avasthas + Śaḍbala threshold)
+    weak_sun_note_html = ""
+    sb_sun_val = _extract_shadbala_val(sb_res, sun_pid)
+    sb_sun_weak = False
+    if sb_sun_val is not None and sun_pid in SHAD_THRESH:
+        sb_sun_weak = sb_sun_val < SHAD_THRESH[sun_pid]
+
+    sun_weak = (sun_pid in avs["bala"]) or (sun_pid in avs["mrita"]) or (sun_pid in avs["sushupti"]) or sb_sun_weak
+    if sun_weak:
+        weak_sun_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Sun is weak</p>"
+        )
+
+    # Attach MD line and the Sun-only weakness note inside this block
+    reading_sun_html = reading_sun_html.replace("</div>", f"{md_sun_note_html}{weak_sun_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
@@ -2107,6 +2218,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading10_html}
   {reading11_html}
   {reading12_html}
+  {reading_sun_html}
 </div>
 """
     return html_out
