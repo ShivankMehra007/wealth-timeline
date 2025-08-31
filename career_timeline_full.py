@@ -1105,6 +1105,984 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     # Attach the MD line and the weakness note directly inside this block
     reading4_html = reading4_html.replace("</div>", f"{md4_note_html}{weak4_note_html}</div>")
+    
+        # ── Reading based on 5th-house lord (children/intellect/creativity) ─────
+    h5_sign = (lagna_sign + 4) % 12
+    h5_lord_pid = _SIGN_LORD[h5_sign]
+    h5_lord_name = PLANET_NAMES.get(h5_lord_pid, str(h5_lord_pid))
+    h5l_house_idx = p2h.get(h5_lord_pid)
+    if h5l_house_idx is None:
+        h5l_house_idx = (_planet_sign(h5_lord_pid) - lagna_sign) % 12
+    h5l_house_no = h5l_house_idx + 1
+
+    # helpers for influence checks
+    def _benefic_aspects_house(target_idx: int) -> bool:
+        BENEFIC_SET = {const._JUPITER, const._VENUS, const._MERCURY, const._MOON}
+        special = {
+            const._JUPITER: {4, 6, 8},  # 5th, 7th, 9th (0-based deltas)
+            const._VENUS:   {6},        # 7th
+            const._MERCURY: {6},        # 7th
+            const._MOON:    {6},        # 7th
+        }
+        for p in BENEFIC_SET:
+            p_house = p2h.get(p)
+            if p_house is None:
+                continue
+            delta = (target_idx - p_house) % 12
+            if delta in special.get(p, {6}):
+                return True
+        return False
+
+    def _planets_in_house(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    NAT_MALEFICS = {const._SUN, const._MARS, const._SATURN,
+                    getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)}
+
+    in_same_house5 = set(_planets_in_house(h5l_house_idx)) - {h5_lord_pid}
+    has_benefic_assoc5 = any(p in {const._JUPITER, const._VENUS, const._MERCURY, const._MOON} for p in in_same_house5)
+    has_malefic_assoc5 = any(p in NAT_MALEFICS for p in in_same_house5)
+
+    # We already defined _malefic_aspects_house above (3rd-lord section) – reuse it:
+    benefic_touches_5lord = has_benefic_assoc5 or _benefic_aspects_house(h5l_house_idx)
+    malefic_touches_5lord = has_malefic_assoc5 or _malefic_aspects_house(h5l_house_idx)
+
+    SIGN_TXT5 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading5_lines: list[str] = []
+    header5 = f"5th-house lord {h5_lord_name} is in the {SIGN_TXT5[h5l_house_idx]} house."
+
+    if h5l_house_no == 1:
+        reading5_lines += [
+            "Shrewd and learned; reputation rises.",
+            "Deprived of comforts from progeny; tendency to squander others’ money.",
+        ]
+    elif h5l_house_no == 2:
+        reading5_lines += [
+            "Many sons and much wealth; widely known; favoured by women; talent in music/arts.",
+        ]
+    elif h5l_house_no == 3:
+        reading5_lines += [
+            "Well-regarded by siblings; persuasive and charming yet back-biting.",
+            "Thrifty and self-focused; children tend to support siblings.",
+        ]
+    elif h5l_house_no == 4:
+        reading5_lines += [
+            "Comforts through mother/home; wealth and wisdom; advisory/preceptor roles.",
+            "Follows ancestral vocation; devoted to mother.",
+        ]
+    elif h5l_house_no == 5:
+        reading5_lines += [
+            "Learning, pride and progeny; prominent and virtuous.",
+        ]
+        # Special condition from the source:
+        if benefic_touches_5lord:
+            reading5_lines.append("Under benefic influence: favourable for progeny.")
+        if malefic_touches_5lord:
+            reading5_lines.append("Under malefic influence: risk of childlessness or poor progeny comfort.")
+    elif h5l_house_no == 6:
+        reading5_lines += [
+            "Illness to child; conflict with son; many enemies; poor health and status; financial strain.",
+        ]
+    elif h5l_house_no == 7:
+        reading5_lines += [
+            "Religiously inclined and dignified; helpful to others; blessed with sons; devout spouse and teachers.",
+        ]
+    elif h5l_house_no == 8:
+        reading5_lines += [
+            "Short-tempered and harsh; suffering and obstacles; adverse for progeny; respiratory ailments indicated.",
+        ]
+    elif h5l_house_no == 9:
+        reading5_lines += [
+            "High status for the child; family renown; literary/artistic gifts; handsome; honoured by authorities.",
+        ]
+    elif h5l_house_no == 10:
+        reading5_lines += [
+            "Fame akin to royalty; abundant pleasures; engages in virtuous/public works; supportive for mother.",
+        ]
+    elif h5l_house_no == 11:
+        reading5_lines += [
+            "Highly learned and wealthy; renowned; skilled author; many sons; steadfast friendships; brave; enjoys royal comforts.",
+        ]
+    elif h5l_house_no == 12:
+        reading5_lines += [
+            "Denied comfort from children or childless; foreign residence/travel likely.",
+        ]
+
+    reading5_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 5th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header5}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading5_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 5th-house lord
+    md5 = _md_period_for(h5_lord_pid)
+    md5_note_html = ""
+    if md5:
+        _s5, _e5 = md5
+        md5_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h5_lord_name}:</strong> "
+            f"{_s5:%Y-%m-%d} – {_e5:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 5th-house lord (Avasthas & Śaḍbala)
+    weak5_note_html = ""
+    sb5_val = _extract_shadbala_val(sb_res, h5_lord_pid)
+    sb5_weak = False
+    if sb5_val is not None and h5_lord_pid in SHAD_THRESH:
+        sb5_weak = sb5_val < SHAD_THRESH[h5_lord_pid]
+    weak5 = (h5_lord_pid in avs["bala"]) or (h5_lord_pid in avs["mrita"]) or (h5_lord_pid in avs["sushupti"]) or sb5_weak
+    if weak5:
+        weak5_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h5_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and weakness note inside this block
+    reading5_html = reading5_html.replace("</div>", f"{md5_note_html}{weak5_note_html}</div>")
+    
+        # ── Reading based on 6th-house lord (enemies/health/service) ─────────────
+    h6_sign = (lagna_sign + 5) % 12
+    h6_lord_pid = _SIGN_LORD[h6_sign]
+    h6_lord_name = PLANET_NAMES.get(h6_lord_pid, str(h6_lord_pid))
+    h6l_house_idx = p2h.get(h6_lord_pid)
+    if h6l_house_idx is None:
+        h6l_house_idx = (_planet_sign(h6_lord_pid) - lagna_sign) % 12
+    h6l_house_no = h6l_house_idx + 1
+
+    SIGN_TXT6 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    # helpers for conjunction / aspects
+    def _planets_in_house(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    NAT_MALEFICS = {
+        const._SUN, const._MARS, const._SATURN,
+        getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)
+    }
+    BENEFIC_SET = {const._JUPITER, const._VENUS, const._MERCURY, const._MOON}
+
+    in_same_house6 = set(_planets_in_house(h6l_house_idx)) - {h6_lord_pid}
+    has_benefic_assoc6 = any(p in BENEFIC_SET for p in in_same_house6)
+    has_malefic_assoc6 = any(p in NAT_MALEFICS for p in in_same_house6)
+
+    # Use the previously defined aspect helpers (already in file)
+    benefic_touches_6lord = has_benefic_assoc6 or _benefic_aspects_house(h6l_house_idx)
+    malefic_touches_6lord = has_malefic_assoc6 or _malefic_aspects_house(h6l_house_idx)
+
+    reading6_lines: list[str] = []
+    header6 = f"6th-house lord {h6_lord_name} is in the {SIGN_TXT6[h6l_house_idx]} house."
+
+    if h6l_house_no == 1:
+        reading6_lines += [
+            "Ill health or recurring ailments; proud yet widely known.",
+            "Wealth through own effort; virtuous and courageous; opposed by relatives/siblings; overcomes enemies; dependable.",
+        ]
+        if benefic_touches_6lord:
+            reading6_lines.append("Under benefic influence: health stabilises / improves.")
+    elif h6l_house_no == 2:
+        reading6_lines += [
+            "Renowned in family; courageous; good oratory; foreign residence likely; dutiful yet ailing; earns and accumulates.",
+        ]
+    elif h6l_house_no == 3:
+        reading6_lines += [
+            "Hostility with brothers; quick-tempered; weak self-effort; suffers defeats; troublesome servants.",
+        ]
+    elif h6l_house_no == 4:
+        reading6_lines += [
+            "Little comfort from mother; brooding and hostile nature; fickle but manages to be rich.",
+            "Mutual friction with father; father’s health suffers.",
+        ]
+    elif h6l_house_no == 5:
+        reading6_lines += [
+            "Friends and wealth are inconstant; strained relationship with children; selfish yet kind; suffers due to progeny.",
+        ]
+    elif h6l_house_no == 6:
+        reading6_lines += [
+            "Hostile to own community; friendly to outsiders; modest wealth; generally good health.",
+        ]
+    elif h6l_house_no == 7:
+        reading6_lines += [
+            "Deprived of marital pleasures; wealthy and virtuous; courageous.",
+            "Spouse is hostile and short-tempered; potential issues with fertility.",
+        ]
+    elif h6l_house_no == 8:
+        reading6_lines += [
+            "Prone to illness; antagonistic to the virtuous; covets others’ wealth and partners; unclean habits.",
+        ]
+        # Classical cause-of-death indications by the 6L nature (only when 6L is in 8H)
+        COD = {
+            const._SATURN: "abdominal ailments",
+            const._MARS: "snake bite",
+            const._MERCURY: "poisoning / septicaemia",
+            const._MOON: "hypothermia or water-borne disease",
+            const._SUN: "attack by a lion or carnivorous beast",
+            const._JUPITER: "deranged wisdom / mental illness",
+            const._VENUS: "eye disease",
+        }
+        cod_txt = COD.get(h6_lord_pid)
+        if cod_txt:
+            reading6_lines.append(f"Classical death-cause indication: {cod_txt}.")
+    elif h6l_house_no == 9:
+        reading6_lines += [
+            "Deals in wood or related trades; fluctuating income; irreverent to scriptures; opposed to brothers; lameness indicated.",
+        ]
+    elif h6l_house_no == 10:
+        reading6_lines += [
+            "Famous in the family; eloquent; detached from father; opposed to mother; enjoys comfort abroad.",
+        ]
+    elif h6l_house_no == 11:
+        reading6_lines += [
+            "Courageous, proud and virtuous; gains via opponents; risk of death through enemies; thefts; benefits through quadrupeds.",
+        ]
+    elif h6l_house_no == 12:
+        reading6_lines += [
+            "Hostile to learned people; squanders on vile pursuits; harms living beings; loses money via quadrupeds; a wandering fatalist.",
+        ]
+
+    reading6_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 6th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header6}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading6_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 6th-house lord
+    md6 = _md_period_for(h6_lord_pid)
+    md6_note_html = ""
+    if md6:
+        _s6, _e6 = md6
+        md6_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h6_lord_name}:</strong> "
+            f"{_s6:%Y-%m-%d} – {_e6:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 6th-house lord (Avasthas & Śaḍbala)
+    weak6_note_html = ""
+    sb6_val = _extract_shadbala_val(sb_res, h6_lord_pid)
+    sb6_weak = False
+    if sb6_val is not None and h6_lord_pid in SHAD_THRESH:
+        sb6_weak = sb6_val < SHAD_THRESH[h6_lord_pid]
+    weak6 = (h6_lord_pid in avs["bala"]) or (h6_lord_pid in avs["mrita"]) or (h6_lord_pid in avs["sushupti"]) or sb6_weak
+    if weak6:
+        weak6_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h6_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and the weakness note directly inside this block
+    reading6_html = reading6_html.replace("</div>", f"{md6_note_html}{weak6_note_html}</div>")
+    
+        # ── Reading based on 7th-house lord (marriage/partnerships) ─────────────
+    h7_sign = (lagna_sign + 6) % 12
+    h7_lord_pid = _SIGN_LORD[h7_sign]
+    h7_lord_name = PLANET_NAMES.get(h7_lord_pid, str(h7_lord_pid))
+    h7l_house_idx = p2h.get(h7_lord_pid)
+    if h7l_house_idx is None:
+        h7l_house_idx = (_planet_sign(h7_lord_pid) - lagna_sign) % 12
+    h7l_house_no = h7l_house_idx + 1
+
+    SIGN_TXT7 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading7_lines: list[str] = []
+    header7 = f"7th-house lord {h7_lord_name} is in the {SIGN_TXT7[h7l_house_idx]} house."
+
+    if h7l_house_no == 1:
+        reading7_lines += [
+            "Adulterous tendencies; sharp but unscrupulous; attractive and pleasure-seeking.",
+            "Strong attachment to spouse; prone to Vāta-related ailments.",
+        ]
+    elif h7l_house_no == 2:
+        reading7_lines += [
+            "Associates with multiple women; paradoxically abstains despite opportunity.",
+            "Income via spouse/partners; sluggish to act.",
+        ]
+    elif h7l_house_no == 3:
+        reading7_lines += [
+            "Spiritual fortitude; affectionate nature; risk of miscarriage for the wife.",
+        ]
+    elif h7l_house_no == 4:
+        reading7_lines += [
+            "Truthful and religious; spouse may resort to adultery; dental issues indicated.",
+            "Ties with the father’s adversaries.",
+        ]
+    elif h7l_house_no == 5:
+        reading7_lines += [
+            "Wealthy, proud and virtuous; contented.",
+            "Wife is taken care of by the son.",
+        ]
+    elif h7l_house_no == 6:
+        reading7_lines += [
+            "Spouse has health issues; mutual hostility; quick temper and misery.",
+            "Suffers at spouse’s hands.",
+        ]
+    elif h7l_house_no == 7:
+        reading7_lines += [
+            "Good spouse; learned; socially well-known; Vāta-related diseases indicated.",
+        ]
+    elif h7l_house_no == 8:
+        reading7_lines += [
+            "Spouse is ailing or morally compromised; separation or loss of spouse possible.",
+            "Adulterous behavior and misery.",
+        ]
+    elif h7l_house_no == 9:
+        reading7_lines += [
+            "Constant inclination toward women; fame; agreeable nature.",
+        ]
+    elif h7l_house_no == 10:
+        reading7_lines += [
+            "Religiously inclined; gains wealth and progeny.",
+            "Disobedient spouse; sensuous indulgence.",
+        ]
+    elif h7l_house_no == 11:
+        reading7_lines += [
+            "Earnings via spouse; more daughters indicated.",
+            "Spouse is beautiful and virtuous.",
+        ]
+    elif h7l_house_no == 12:
+        reading7_lines += [
+            "Poverty; trade in garments; expenses through spouse; deceived by spouse.",
+        ]
+
+    reading7_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 7th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header7}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading7_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 7th-house lord
+    md7 = _md_period_for(h7_lord_pid)
+    md7_note_html = ""
+    if md7:
+        _s7, _e7 = md7
+        md7_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h7_lord_name}:</strong> "
+            f"{_s7:%Y-%m-%d} – {_e7:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 7th-house lord (Avasthas & Śaḍbala)
+    weak7_note_html = ""
+    sb7_val = _extract_shadbala_val(sb_res, h7_lord_pid)
+    sb7_weak = False
+    if sb7_val is not None and h7_lord_pid in SHAD_THRESH:
+        sb7_weak = sb7_val < SHAD_THRESH[h7_lord_pid]
+    weak7 = (h7_lord_pid in avs["bala"]) or (h7_lord_pid in avs["mrita"]) or (h7_lord_pid in avs["sushupti"]) or sb7_weak
+    if weak7:
+        weak7_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h7_lord_name} is weak</p>"
+        )
+
+    # Attach the MD line and the weakness note directly inside this block
+    reading7_html = reading7_html.replace("</div>", f"{md7_note_html}{weak7_note_html}</div>")
+    
+        # ── Reading based on 8th-house lord (longevity/obstructions/hidden) ─────
+    h8_sign = (lagna_sign + 7) % 12
+    h8_lord_pid = _SIGN_LORD[h8_sign]
+    h8_lord_name = PLANET_NAMES.get(h8_lord_pid, str(h8_lord_pid))
+    h8l_house_idx = p2h.get(h8_lord_pid)
+    if h8l_house_idx is None:
+        h8l_house_idx = (_planet_sign(h8_lord_pid) - lagna_sign) % 12
+    h8l_house_no = h8l_house_idx + 1
+
+    SIGN_TXT8 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    # helpers for conjunction/association checks
+    def _planets_in_house(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    NAT_MALEFICS = {
+        const._SUN, const._MARS, const._SATURN,
+        getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)
+    }
+    BENEFIC_SET = {const._JUPITER, const._VENUS, const._MERCURY, const._MOON}
+
+    in_same_house8 = set(_planets_in_house(h8l_house_idx)) - {h8_lord_pid}
+    has_benefic_assoc8 = any(p in BENEFIC_SET for p in in_same_house8)
+    has_malefic_assoc8 = any(p in NAT_MALEFICS for p in in_same_house8)
+
+    # Weakness flag for 8th-lord (used both for note and for the 8H condition)
+    sb8_val = _extract_shadbala_val(sb_res, h8_lord_pid)
+    sb8_weak = False
+    if sb8_val is not None and h8_lord_pid in SHAD_THRESH:
+        sb8_weak = sb8_val < SHAD_THRESH[h8_lord_pid]
+    weak8 = (h8_lord_pid in avs["bala"]) or (h8_lord_pid in avs["mrita"]) or (h8_lord_pid in avs["sushupti"]) or sb8_weak
+
+    reading8_lines: list[str] = []
+    header8 = f"8th-house lord {h8_lord_name} is in the {SIGN_TXT8[h8l_house_idx]} house."
+
+    if h8l_house_no == 1:
+        reading8_lines += [
+            "Reduced physical comforts; irreverence toward the sacred/tradition; accident-prone; engages in forbidden or risky acts.",
+        ]
+    elif h8l_house_no == 2:
+        reading8_lines += [
+            "Weak initiative; limited wealth; loss of savings; short-life indications; thievish streak; many enemies; risk of punishment by authorities.",
+        ]
+    elif h8l_house_no == 3:
+        reading8_lines += [
+            "Lethargic and weak; poor comfort from siblings; quarrels with friends/brothers; fickle effort.",
+        ]
+    elif h8l_house_no == 4:
+        reading8_lines += [
+            "Deceives associates; deprived of help from mother/home/property; friction with father.",
+        ]
+    elif h8l_house_no == 5:
+        reading8_lines += [
+            "Limited progeny; wealth and longevity possible; dull or poor judgment; troubles after birth of a child.",
+        ]
+    elif h8l_house_no == 6:
+        reading8_lines += [
+            "Childhood ailments; ultimately overcomes enemies; anxieties/fears related to water and reptiles.",
+        ]
+        # Classical sub-conditions: nature of 8L when placed in 6H
+        COD_8L_IN_6H = {
+            const._SUN: "opposed to the ruler/state",
+            const._MOON: "prone to lingering ailments",
+            const._MARS: "quick-tempered and rash",
+            const._MERCURY: "cowardly tendencies",
+            const._JUPITER: "diseased/afflicted limbs",
+            const._VENUS: "eye disease",
+            const._SATURN: "diseases of the mouth/oral cavity",
+        }
+        _spec = COD_8L_IN_6H.get(h8_lord_pid)
+        if _spec:
+            reading8_lines.append(f"In this placement, classical texts add: {_spec}.")
+    elif h8l_house_no == 7:
+        reading8_lines += [
+            "Two marriages/alliances likely; abdominal disease; immoral conduct indicated.",
+        ]
+        if has_malefic_assoc8:
+            reading8_lines.append("With malefic association: losses in business and suffering caused by spouse.")
+    elif h8l_house_no == 8:
+        reading8_lines += [
+            "Longevity and basic vitality protected; crafty/deceitful; fame through hidden or complex matters.",
+        ]
+        if weak8:
+            reading8_lines.append("However, with a weak 8th-lord: lifespan trends toward medium rather than long.")
+    elif h8l_house_no == 9:
+        reading8_lines += [
+            "Atheistic or irreverent; covets others’ spouse and wealth; cruel acts; spouse’s conduct is problematic; oral-cavity ailments possible.",
+        ]
+    elif h8l_house_no == 10:
+        reading8_lines += [
+            "Poor support from father; disinclined to sustained effort; serves under superiors without autonomy.",
+        ]
+    elif h8l_house_no == 11:
+        reading8_lines += [
+            "Difficult early years; prosperity improves in later life.",
+        ]
+        if has_malefic_assoc8:
+            reading8_lines.append("With malefic association here: poverty/constraints persist.")
+        if has_benefic_assoc8:
+            reading8_lines.append("With benefic association here: longevity is enhanced and gains stabilise.")
+    elif h8l_house_no == 12:
+        reading8_lines += [
+            "Spends on immoral pursuits; cruel or harsh behavior; chronic ailments; thievish tendencies.",
+        ]
+
+    reading8_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 8th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header8}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading8_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 8th-house lord
+    md8 = _md_period_for(h8_lord_pid)
+    md8_note_html = ""
+    if md8:
+        _s8, _e8 = md8
+        md8_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h8_lord_name}:</strong> "
+            f"{_s8:%Y-%m-%d} – {_e8:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 8th-house lord (Avasthas & Śaḍbala)
+    weak8_note_html = ""
+    if weak8:
+        weak8_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h8_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and the weakness note inside this block
+    reading8_html = reading8_html.replace("</div>", f"{md8_note_html}{weak8_note_html}</div>")
+    
+        # ── Reading based on 9th-house lord (fortune/dharma) ─────────────────────
+    h9_sign = (lagna_sign + 8) % 12
+    h9_lord_pid = _SIGN_LORD[h9_sign]
+    h9_lord_name = PLANET_NAMES.get(h9_lord_pid, str(h9_lord_pid))
+    h9l_house_idx = p2h.get(h9_lord_pid)
+    if h9l_house_idx is None:
+        h9l_house_idx = (_planet_sign(h9_lord_pid) - lagna_sign) % 12
+    h9l_house_no = h9l_house_idx + 1
+
+    SIGN_TXT9 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading9_lines: list[str] = []
+    header9 = f"9th-house lord {h9_lord_name} is in the {SIGN_TXT9[h9l_house_idx]} house."
+
+    if h9l_house_no == 1:
+        reading9_lines += [
+            "Learned, attractive, honoured by authorities; very fortunate.",
+            "Small appetite; devoted to teachers and deities.",
+        ]
+    elif h9l_house_no == 2:
+        reading9_lines += [
+            "Sensuous; endowed with spouse and children; wealthy and learned; well-liked.",
+            "Prone to ailments of the mouth/oral cavity.",
+        ]
+    elif h9l_house_no == 3:
+        reading9_lines += [
+            "Very good-looking; wealthy and virtuous.",
+            "Support from siblings/relatives; spouse of pleasing appearance.",
+        ]
+    elif h9l_house_no == 4:
+        reading9_lines += [
+            "Devoted to mother; famous; owns house, land and vehicles.",
+        ]
+    elif h9l_house_no == 5:
+        reading9_lines += [
+            "Devoted to preceptors; religiously inclined and learned.",
+            "Fortunate children; generally virtuous conduct.",
+        ]
+    elif h9l_house_no == 6:
+        reading9_lines += [
+            "Harassed by enemies; little comfort from maternal uncle.",
+            "Despite adversity, remains engaged in religious pursuits; health is delicate.",
+        ]
+    elif h9l_house_no == 7:
+        reading9_lines += [
+            "Truthful, beautiful and devoted spouse; overall virtuousness indicated.",
+        ]
+    elif h9l_house_no == 8:
+        reading9_lines += [
+            "Unfortunate streak; little comfort from elder brother.",
+            "Harms living beings; irreligious or transgressive tendencies.",
+        ]
+    elif h9l_house_no == 9:
+        reading9_lines += [
+            "Highly fortunate; attractive and virtuous; supported by brothers.",
+            "Strong religious inclination.",
+        ]
+    elif h9l_house_no == 10:
+        reading9_lines += [
+            "Virtuous and renowned; elevated status with authorities.",
+            "Actively religious; devoted to parents.",
+        ]
+    elif h9l_house_no == 11:
+        reading9_lines += [
+            "Pious and upright; steady inflow of money; long-lived.",
+            "Religiously active; wealthy and famous.",
+        ]
+    elif h9l_house_no == 12:
+        reading9_lines += [
+            "Misfortune; spends wealth on religious deeds/charities.",
+            "Honoured in foreign lands; scholarly and good-looking.",
+        ]
+
+    reading9_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 9th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header9}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading9_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 9th-house lord
+    md9 = _md_period_for(h9_lord_pid)
+    md9_note_html = ""
+    if md9:
+        _s9, _e9 = md9
+        md9_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h9_lord_name}:</strong> "
+            f"{_s9:%Y-%m-%d} – {_e9:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 9th-house lord (Avasthas & Śaḍbala)
+    weak9_note_html = ""
+    sb9_val = _extract_shadbala_val(sb_res, h9_lord_pid)
+    sb9_weak = False
+    if sb9_val is not None and h9_lord_pid in SHAD_THRESH:
+        sb9_weak = sb9_val < SHAD_THRESH[h9_lord_pid]
+    weak9 = (h9_lord_pid in avs["bala"]) or (h9_lord_pid in avs["mrita"]) or (h9_lord_pid in avs["sushupti"]) or sb9_weak
+    if weak9:
+        weak9_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h9_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and weakness note inside this block
+    reading9_html = reading9_html.replace("</div>", f"{md9_note_html}{weak9_note_html}</div>")
+    
+        # ── Reading based on 10th-house lord (career/status/karma) ─────────────
+    h10_sign = (lagna_sign + 9) % 12
+    h10_lord_pid = _SIGN_LORD[h10_sign]
+    h10_lord_name = PLANET_NAMES.get(h10_lord_pid, str(h10_lord_pid))
+    h10l_house_idx = p2h.get(h10_lord_pid)
+    if h10l_house_idx is None:
+        h10l_house_idx = (_planet_sign(h10_lord_pid) - lagna_sign) % 12
+    h10l_house_no = h10l_house_idx + 1
+
+    SIGN_TXT10 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading10_lines: list[str] = []
+    header10 = f"10th-house lord {h10_lord_name} is in the {SIGN_TXT10[h10l_house_idx]} house."
+
+    if h10l_house_no == 1:
+        reading10_lines += [
+            "Learned and virtuous; sickly in childhood but healthier later.",
+            "Wealth rises progressively; devoted to father; friction with mother.",
+        ]
+    elif h10l_house_no == 2:
+        reading10_lines += [
+            "Virtuous and wealthy; honoured by authorities; charitable.",
+            "Opposed to mother; acquisitive/avaricious streak.",
+        ]
+    elif h10l_house_no == 3:
+        reading10_lines += [
+            "Valorous and righteous; eloquent speaker; supported by siblings and staff.",
+            "May oppose close relations when principles are at stake.",
+        ]
+    elif h10l_house_no == 4:
+        reading10_lines += [
+            "Prosperous and virtuous; lands/vehicles/comforts indicated.",
+            "Devoted to both parents.",
+        ]
+    elif h10l_house_no == 5:
+        reading10_lines += [
+            "Wealth, children and learning supported; healthy and engaged in pious works.",
+            "Favoured by the ruler; taste for music and the arts.",
+        ]
+    elif h10l_house_no == 6:
+        reading10_lines += [
+            "Harassed by rivals; skilful but under-rewarded; little comfort from father.",
+            "Quarrelsome temperament; health generally serviceable.",
+        ]
+    elif h10l_house_no == 7:
+        reading10_lines += [
+            "Good spouse; virtuous and thoughtful; acts in accordance with dharma.",
+        ]
+    elif h10l_house_no == 8:
+        reading10_lines += [
+            "Long-lived but critical of others; reluctant to initiate ventures; harsh or unethical leanings.",
+        ]
+    elif h10l_house_no == 9:
+        reading10_lines += [
+            "Wealth and worthy progeny; royal favour or status equal to a ruler; noble friends.",
+        ]
+    elif h10l_house_no == 10:
+        reading10_lines += [
+            "Truthful and highly capable; enjoys comforts; excellent reputation.",
+            "Kindness toward mother; professional stature is strong.",
+        ]
+    elif h10l_house_no == 11:
+        reading10_lines += [
+            "Riches, sons and virtues accrue; truthful and content; longevity indicated.",
+            "Well cared for by the mother.",
+        ]
+    elif h10l_house_no == 12:
+        reading10_lines += [
+            "Clever yet anxious; intimidated by opponents; expenses through the state/authority.",
+        ]
+        # Special condition from the source: if 10L is a natural malefic in 12H → foreign work/wandering
+        NAT_MALEFICS_10 = {
+            const._SUN, const._MARS, const._SATURN,
+            getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)
+        }
+        if h10_lord_pid in NAT_MALEFICS_10:
+            reading10_lines.append("As a natural malefic 10th-lord in the 12th: wanders or works in a foreign land.")
+
+    reading10_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 10th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header10}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading10_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 10th-house lord
+    md10 = _md_period_for(h10_lord_pid)
+    md10_note_html = ""
+    if md10:
+        _s10, _e10 = md10
+        md10_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h10_lord_name}:</strong> "
+            f"{_s10:%Y-%m-%d} – {_e10:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 10th-house lord (Avasthas & Śaḍbala)
+    weak10_note_html = ""
+    sb10_val = _extract_shadbala_val(sb_res, h10_lord_pid)
+    sb10_weak = False
+    if sb10_val is not None and h10_lord_pid in SHAD_THRESH:
+        sb10_weak = sb10_val < SHAD_THRESH[h10_lord_pid]
+    weak10 = (h10_lord_pid in avs["bala"]) or (h10_lord_pid in avs["mrita"]) or (h10_lord_pid in avs["sushupti"]) or sb10_weak
+    if weak10:
+        weak10_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h10_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and the weakness note directly inside this block
+    reading10_html = reading10_html.replace("</div>", f"{md10_note_html}{weak10_note_html}</div>")
+    
+        # ── Reading based on 11th-house lord (income/gains/networks) ────────────
+    h11_sign = (lagna_sign + 10) % 12
+    h11_lord_pid = _SIGN_LORD[h11_sign]
+    h11_lord_name = PLANET_NAMES.get(h11_lord_pid, str(h11_lord_pid))
+    h11l_house_idx = p2h.get(h11_lord_pid)
+    if h11l_house_idx is None:
+        h11l_house_idx = (_planet_sign(h11_lord_pid) - lagna_sign) % 12
+    h11l_house_no = h11l_house_idx + 1
+
+    SIGN_TXT11 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    # natural malefic set (local to avoid cross-block deps)
+    NAT_MALEFICS_11 = {
+        const._SUN, const._MARS, const._SATURN,
+        getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)
+    }
+    is_h11_malefic_nat = h11_lord_pid in NAT_MALEFICS_11
+
+    reading11_lines: list[str] = []
+    header11 = f"11th-house lord {h11_lord_name} is in the {SIGN_TXT11[h11l_house_idx]} house."
+
+    if h11l_house_no == 1:
+        reading11_lines += [
+            "Wealthy with a sattvic bent; poetic/expressive; treats people fairly.",
+            "Steady inflow of money; strong and brave; (some texts add) risk of shorter lifespan.",
+        ]
+    elif h11l_house_no == 2:
+        reading11_lines += [
+            "Very wealthy; enjoys comforts and spiritual leanings.",
+            "Religious/charitable; prone to sickness and shorter life indications.",
+        ]
+    elif h11l_house_no == 3:
+        reading11_lines += [
+            "Highly efficient; many siblings/allies; overcomes enemies.",
+            "Susceptible to abdominal complaints.",
+        ]
+    elif h11l_house_no == 4:
+        reading11_lines += [
+            "Wealth via mother; houses/lands; pilgrimages indicated.",
+            "Long-lived; devoted to father; acts appropriately at the right time.",
+        ]
+    elif h11l_house_no == 5:
+        reading11_lines += [
+            "Learned; engaged in religious pursuits; lives comfortably.",
+            "Virtuous children; harmonious relations with father.",
+        ]
+    elif h11l_house_no == 6:
+        reading11_lines += [
+            "Sickly; harsh; troubled by foes; residence or ties in foreign lands; powerful enemies.",
+        ]
+        if is_h11_malefic_nat:
+            reading11_lines.append("With a natural malefic as 11th-lord in the 6th: classical indication of death in a foreign land at the hands of a thief.")
+    elif h11l_house_no == 7:
+        reading11_lines += [
+            "Virtuous yet sensual; generous; often yields to spouse’s lead.",
+            "Gains through women; long-lived; elevated status.",
+        ]
+    elif h11l_house_no == 8:
+        reading11_lines += [
+            "Professional/social failures; long-lived yet sickly; spouse may predecease.",
+        ]
+    elif h11l_house_no == 9:
+        reading11_lines += [
+            "Favoured by rulers; wealthy and truthful; very learned; devoted to religion.",
+        ]
+    elif h11l_house_no == 10:
+        reading11_lines += [
+            "Honoured by authority; self-controlled, truthful and virtuous.",
+            "Follows own dharma; long-lived; devoted to mother; strained relation with father.",
+        ]
+    elif h11l_house_no == 11:
+        reading11_lines += [
+            "Gains from most undertakings; fame through learning and possessions.",
+            "Long-lived; many sons and grandsons; pleasant appearance.",
+        ]
+    elif h11l_house_no == 12:
+        reading11_lines += [
+            "Associates with foreigners/outsiders; sensual; comforts via multiple women.",
+            "Spends on religious works yet engages in misdeeds; chronic ailments indicated.",
+        ]
+
+    reading11_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 11th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header11}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading11_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note (shown above weakness note)
+    md11 = _md_period_for(h11_lord_pid)
+    md11_note_html = ""
+    if md11:
+        _s11, _e11 = md11
+        md11_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h11_lord_name}:</strong> "
+            f"{_s11:%Y-%m-%d} – {_e11:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 11th-house lord (Avasthas & Śaḍbala)
+    weak11_note_html = ""
+    sb11_val = _extract_shadbala_val(sb_res, h11_lord_pid)
+    sb11_weak = False
+    if sb11_val is not None and h11_lord_pid in SHAD_THRESH:
+        sb11_weak = sb11_val < SHAD_THRESH[h11_lord_pid]
+    weak11 = (h11_lord_pid in avs["bala"]) or (h11_lord_pid in avs["mrita"]) or (h11_lord_pid in avs["sushupti"]) or sb11_weak
+    if weak11:
+        weak11_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h11_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and the weakness note directly inside this block
+    reading11_html = reading11_html.replace("</div>", f"{md11_note_html}{weak11_note_html}</div>")
+    
+        # ── Reading based on 12th-house lord (loss/foreign/expenses/isolation) ───
+    h12_sign = (lagna_sign + 11) % 12
+    h12_lord_pid = _SIGN_LORD[h12_sign]
+    h12_lord_name = PLANET_NAMES.get(h12_lord_pid, str(h12_lord_pid))
+    h12l_house_idx = p2h.get(h12_lord_pid)
+    if h12l_house_idx is None:
+        h12l_house_idx = (_planet_sign(h12_lord_pid) - lagna_sign) % 12
+    h12l_house_no = h12l_house_idx + 1
+
+    SIGN_TXT12 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading12_lines: list[str] = []
+    header12 = f"12th-house lord {h12_lord_name} is in the {SIGN_TXT12[h12l_house_idx]} house."
+
+    if h12l_house_no == 1:
+        reading12_lines += [
+            "Spend-thrift tendencies; weak physique; poverty risks; not sharp-minded.",
+            "Foreign residence likely; pleasant appearance; unmarried/impotency indications.",
+            "Prone to Kapha-related illnesses."
+        ]
+    elif h12l_house_no == 2:
+        reading12_lines += [
+            "Religiously inclined; sweet-tongued; spends on good deeds.",
+            "Generally comfortable, yet fears from thieves, fire and authority."
+        ]
+    elif h12l_house_no == 3:
+        reading12_lines += [
+            "Estranged from brothers or lives away from them; left to fend for oneself.",
+            "Hostile stance toward others; thrifty/parsimonious bent."
+        ]
+    elif h12l_house_no == 4:
+        reading12_lines += [
+            "Devoid of lands, home/vehicles or maternal comforts; sickly.",
+            "Opposition from own sons; general misery at home."
+        ]
+    elif h12l_house_no == 5:
+        reading12_lines += [
+            "Spends for the sake of children; deprived of children and learning.",
+            "Pilgrimage or spiritual travel indicated."
+        ]
+    elif h12l_house_no == 6:
+        reading12_lines += [
+            "Short-tempered; miserable; sinful tendencies; hostile to own people.",
+            "Addiction to other men’s/women’s company; eye disease indicated."
+        ]
+        # Special classical clause: Venus as 12L in 6H → blindness
+        if h12_lord_pid == const._VENUS:
+            reading12_lines.append("Classical warning: Venus as 12th-lord in the 6th — blindness risk.")
+    elif h12l_house_no == 7:
+        reading12_lines += [
+            "Expenditure through spouse; deprived of marital comforts.",
+            "Weakness or dullness; wicked conduct; suffering due to one’s own spouse."
+        ]
+    elif h12l_house_no == 8:
+        reading12_lines += [
+            "Pleasant speech; medium life span; some good qualities; capacity to acquire wealth."
+        ]
+    elif h12l_house_no == 9:
+        reading12_lines += [
+            "Self-serving; friction with friends and preceptors; pilgrimage/spiritual travel indicated."
+        ]
+    elif h12l_house_no == 10:
+        reading12_lines += [
+            "Little comfort from father; loss of money via the state/ruler.",
+            "Avoids other’s spouses; accumulates wealth ultimately for the children."
+        ]
+    elif h12l_house_no == 11:
+        reading12_lines += [
+            "Rich and reputed; yet suffers losses even amidst wealth-yogas.",
+            "Long-lived and famous; truthful disposition."
+        ]
+    elif h12l_house_no == 12:
+        reading12_lines += [
+            "Spend-thrift; quick to anger; sickly and short-lived tendencies.",
+            "Cares for cattle/livestock; becomes well-known."
+        ]
+
+    reading12_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 12th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header12}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading12_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 12th-house lord
+    md12 = _md_period_for(h12_lord_pid)
+    md12_note_html = ""
+    if md12:
+        _s12, _e12 = md12
+        md12_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h12_lord_name}:</strong> "
+            f"{_s12:%Y-%m-%d} – {_e12:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 12th-house lord (Avasthas & Śaḍbala)
+    weak12_note_html = ""
+    sb12_val = _extract_shadbala_val(sb_res, h12_lord_pid)
+    sb12_weak = False
+    if sb12_val is not None and h12_lord_pid in SHAD_THRESH:
+        sb12_weak = sb12_val < SHAD_THRESH[h12_lord_pid]
+    weak12 = (h12_lord_pid in avs["bala"]) or (h12_lord_pid in avs["mrita"]) or (h12_lord_pid in avs["sushupti"]) or sb12_weak
+    if weak12:
+        weak12_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h12_lord_name} is weak</p>"
+        )
+
+    # Attach MD line and weakness note inside this block
+    reading12_html = reading12_html.replace("</div>", f"{md12_note_html}{weak12_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
@@ -1121,6 +2099,14 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading2_html}
   {reading3_html}
   {reading4_html}
+  {reading5_html}
+  {reading6_html}
+  {reading7_html}
+  {reading8_html}
+  {reading9_html}
+  {reading10_html}
+  {reading11_html}
+  {reading12_html}
 </div>
 """
     return html_out
