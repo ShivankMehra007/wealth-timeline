@@ -982,6 +982,129 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         weak3_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {h3_lord_name} is weak</p>"
 
     reading3_html = reading3_html.replace("</div>", f"{md3_note_html}{weak3_note_html}</div>")
+    
+        # ── Reading based on 4th-house lord (home/mother/real-estate/comforts) ──
+    h4_sign = (lagna_sign + 3) % 12
+    h4_lord_pid = _SIGN_LORD[h4_sign]
+    h4_lord_name = PLANET_NAMES.get(h4_lord_pid, str(h4_lord_pid))
+    h4l_house_idx = p2h.get(h4_lord_pid)
+    if h4l_house_idx is None:
+        h4l_house_idx = (_planet_sign(h4_lord_pid) - lagna_sign) % 12
+    h4l_house_no = h4l_house_idx + 1
+
+    SIGN_TXT4 = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading4_lines: list[str] = []
+    header4 = f"4th-house lord {h4_lord_name} is in the {SIGN_TXT4[h4l_house_idx]} house."
+
+    # Natural benefic/malefic check for the 4th lord (used in House-6 condition)
+    is_h4_benefic_nat = h4_lord_pid in BENEFICS_NATURAL
+    NAT_MALEFICS = {const._SUN, const._MARS, const._SATURN,
+                    getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)}
+    is_h4_malefic_nat = h4_lord_pid in NAT_MALEFICS
+
+    if h4l_house_no == 1:
+        reading4_lines += [
+            "Strong support from mother; comfort with home and vehicles.",
+            "Educated; gains in land/real-estate and conveniences; generally virtuous.",
+        ]
+    elif h4l_house_no == 2:
+        reading4_lines += [
+            "Owns property; courageous and proud; large family setup.",
+            "Magnetic charm; indulgent in physical pleasures.",
+        ]
+    elif h4l_house_no == 3:
+        reading4_lines += [
+            "Generous, talented and courageous; charitable; supported by servants.",
+            "Wealth comes through personal effort; can be a source of trouble to parents.",
+        ]
+    elif h4l_house_no == 4:
+        reading4_lines += [
+            "Vast property and steady comforts; clever and composed.",
+            "Advisory/ministerial capacity; well-informed and proud; attached to spouse.",
+            "Raises father’s status/wealth; inclined to religious pursuits.",
+        ]
+    elif h4l_house_no == 5:
+        reading4_lines += [
+            "Enjoys physical comforts; widely liked; devoted to God.",
+            "Earnings through own initiative; longevity indicated; benefits from father.",
+        ]
+    elif h4l_house_no == 6:
+        reading4_lines += [
+            "Deprivation of maternal comforts; short-tempered; morally wayward; brooding; adulterous tendencies.",
+        ]
+        # Conditional clause from the source:
+        if is_h4_malefic_nat:
+            reading4_lines.append("As a natural malefic 4th-lord in the 6th: brings bad name to the father.")
+        if is_h4_benefic_nat:
+            reading4_lines.append("As a natural benefic 4th-lord in the 6th: accumulates wealth.")
+    elif h4l_house_no == 7:
+        reading4_lines += [
+            "Versed in many subjects; relinquishes father’s/ancestral property.",
+            "Finds it hard to express confidently in assemblies.",
+        ]
+    elif h4l_house_no == 8:
+        reading4_lines += [
+            "Lacks home comforts; risks impotence; little help from parents.",
+            "Cruel, sickly and morally compromised; base origins indicated.",
+        ]
+    elif h4l_house_no == 9:
+        reading4_lines += [
+            "Beloved and well-provided; proud and virtuous.",
+            "Little help from father and often away from him; learned; Vishnu-oriented worship.",
+        ]
+    elif h4l_house_no == 10:
+        reading4_lines += [
+            "Honoured by authorities; robust health; many comforts; self-controlled.",
+            "Technical/chemical know-how; father may have two marriages.",
+        ]
+    elif h4l_house_no == 11:
+        reading4_lines += [
+            "Generous, helpful and capable; charitable yet prone to ailments.",
+            "Devoted to father; performs virtuous works.",
+        ]
+    elif h4l_house_no == 12:
+        reading4_lines += [
+            "Homelessness or fragile home base; foolish and indolent; wayward conduct.",
+            "Father resides abroad or away from native.",
+        ]
+
+    reading4_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 4th-house lord</h3>"
+        f"<p class='text-center mb-1'><em>{header4}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading4_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for 4th-house lord
+    md4 = _md_period_for(h4_lord_pid)
+    md4_note_html = ""
+    if md4:
+        _s4, _e4 = md4
+        md4_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {h4_lord_name}:</strong> "
+            f"{_s4:%Y-%m-%d} – {_e4:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for 4th-house lord (Avasthas & Śaḍbala)
+    weak4_note_html = ""
+    sb4_val = _extract_shadbala_val(sb_res, h4_lord_pid)
+    sb4_weak = False
+    if sb4_val is not None and h4_lord_pid in SHAD_THRESH:
+        sb4_weak = sb4_val < SHAD_THRESH[h4_lord_pid]
+    weak4 = (h4_lord_pid in avs["bala"]) or (h4_lord_pid in avs["mrita"]) or (h4_lord_pid in avs["sushupti"]) or sb4_weak
+    if weak4:
+        weak4_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {h4_lord_name} is weak</p>"
+        )
+
+    # Attach the MD line and the weakness note directly inside this block
+    reading4_html = reading4_html.replace("</div>", f"{md4_note_html}{weak4_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
