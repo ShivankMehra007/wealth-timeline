@@ -3842,12 +3842,12 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {sun_rashi_html}
   {moon_rashi_html}
   {mars_rashi_html}
-  {mercury_rashi_html}
-  {jupiter_rashi_html}
-  {venus_rashi_html}
-  {saturn_rashi_html}
-  {rahu_rashi_html}
-  {ketu_rashi_html}
+  {rashi_mercury_html}
+  {rashi_jupiter_html}
+  {rashi_venus_html}
+  {rashi_saturn_html}
+  {rashi_rahu_html}
+  {rashi_ketu_html}
 </div>
 """
     return html_out
