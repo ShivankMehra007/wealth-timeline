@@ -3184,6 +3184,186 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     # Attach MD line and weakness note directly to Ketu block
     reading_ketu_html = reading_ketu_html.replace("</div>", f"{mdK_note_html}{weakK_note_html}</div>")
+    
+        # ── Readings: planets relative to the Moon (Chandra-lagna positions) ─────
+    # Builds one mini-block per graha (Sun, Mars, Mercury, Jupiter, Venus, Saturn, Rahu)
+
+    def _house_idx_or_sign(pid: int) -> int:
+        """Return 0-based whole-sign house index for a planet; fall back to sign delta."""
+        h = p2h.get(pid)
+        if h is not None:
+            return int(h)
+        # fallback: use sign delta vs ascendant
+        return (_planet_sign(pid) - lagna_sign) % 12
+
+    def _rel_from_moon(pid: int) -> int:
+        """0-based house *from the Moon* (Moon's house = 0)."""
+        p_h = _house_idx_or_sign(pid)
+        m_h = _house_idx_or_sign(const._MOON)
+        return (p_h - m_h) % 12
+
+    def _ord_txt(i0: int) -> str:
+        ORD = ["first","second","third","fourth","fifth","sixth",
+               "seventh","eighth","ninth","tenth","eleventh","twelfth"]
+        return ORD[i0]
+
+    def _weak_note_for(pid: int, pname: str) -> str:
+        sb_val = _extract_shadbala_val(sb_res, pid)
+        sb_weak = (pid in SHAD_THRESH) and (sb_val is not None) and (sb_val < SHAD_THRESH[pid])
+        weak = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_weak
+        return (f"<p class='text-center mt-2'><strong>Note:</strong> "
+                f"The above predictions may not manifest very strongly, since the {pname} is weak</p>") if weak else ""
+
+    def _md_note_for(pid: int, pname: str) -> str:
+        md = _md_period_for(pid)
+        if not md:
+            return ""
+        s, e = md
+        return (f"<p class='text-center mt-2'><strong>"
+                f"The above effects would be more prominent in the mahadasha of {pname}:</strong> "
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>")
+
+    # helper: Jupiter aspect to a given house (0-based) from lagna
+    def _jupiter_aspects_house(target_idx: int) -> bool:
+        jh = _house_idx_or_sign(const._JUPITER)
+        delta = (target_idx - jh) % 12
+        return delta in {4, 6, 8}  # Jupiter’s 5th, 7th, 9th aspects
+
+    reading_moon_rel_html = ""
+
+    def _one_rel_block(pid: int, pname: str) -> str:
+        i = _rel_from_moon(pid)        # 0-based
+        n = i + 1                       # 1-based
+        header = f"{pname} is in the {_ord_txt(i)} house from the Moon."
+        lines: list[str] = []
+
+        # ——— SUN from Moon ———
+        if pid == const._SUN:
+            if   n == 1:  lines += ["Long travels, indulgence in pleasures, and a taste for conflict."]
+            elif n == 2:  lines += ["Servants/support staff; dignified bearing; favoured by authorities."]
+            elif n == 3:  lines += ["Craves riches (especially gold); chaste; commands/controls people."]
+            elif n == 4:  lines += ["Harms the mother or her wellbeing."]
+            elif n == 5:  lines += ["Trouble via daughters; many sons indicated."]
+            elif n == 6:  lines += ["Conquers enemies; works for warriors/authority (kṣatriya contexts)."]
+            elif n == 7:  lines += ["Beautiful spouse; good conduct; honoured by rulers; ascetic leanings."]
+            elif n == 8:  lines += ["Stirs strife; prone to ailments."]
+            elif n == 9:  lines += ["Religious bent; truthful; suffers due to relatives."]
+            elif n == 10: lines += ["Exceptionally wealthy; praised by the affluent."]
+            elif n == 11: lines += ["Royal dignity; multi-skilled; famous; head of family."]
+            elif n == 12: lines += ["One-eyed indication (classical)."]
+
+        # ——— MARS from Moon ———
+        elif pid == const._MARS:
+            if   n == 1:  lines += ["Reddish eyes/complexion; bleeding wounds."]
+            elif n == 2:  lines += ["Owns land; a son inclined to agriculture."]
+            elif n == 3:  lines += ["About four brothers; good-natured; generally comfortable."]
+            elif n == 4:  lines += ["Loss of comforts/wealth and risk of losing wife."]
+            elif n == 5:  lines += ["Deprived of sons."]
+            elif n == 6:  lines += ["Irreligious acts, illness and enmity."]
+            elif n == 7:  lines += ["Spouse ill-natured and irritable."]
+            elif n == 8:  lines += ["Sinful, violent; denies truthfulness."]
+            elif n == 9:  lines += ["Wealth accrues; son in old age."]
+            elif n == 10: lines += ["Conveyances, comforts and money."]
+            elif n == 11: lines += ["Dignity at court; handsome presence."]
+            elif n == 12: lines += ["Hurts all around him, including mother."]
+
+        # ——— MERCURY from Moon ———
+        elif pid == const._MERCURY:
+            if   n == 1:  lines += ["Lacks ease and physical grace; harsh speech; restless wanderer."]
+            elif n == 2:  lines += ["Wealth, house and kin; risk of cold-borne ailments."]
+            elif n == 3:  lines += ["Property and wealth; gains via great persons or rulers."]
+            elif n == 4:  lines += ["Ever comfortable; gains through maternal relations."]
+            elif n == 5:  lines += ["Sharp intellect and learning; pleasing looks; sensual; harsh of tongue."]
+            elif n == 6:  lines += ["Miserly, timid, conflict-averse; hairy body and large eyes."]
+            elif n == 7:  lines += ["Dominated by women; miser yet wealthy; long life."]
+            elif n == 8:  lines += ["Cold constitution; noted among rulers; feared by foes."]
+            elif n == 9:  lines += ["Opposes own religion; absorbed in others’ religions; callous opposition to many."]
+            elif n == 10:
+                lines += ["Rāja-yoga indications (status/authority)."]
+                # extra condition from the text – only emit if true
+                if _house_idx_or_sign(const._MOON) == 9:  # Moon actually in 10th from lagna
+                    lines += ["Because the Moon is in the 10th, status in the family rises (leader of the clan)."]
+            elif n == 11: lines += ["Gains at every step; (classical) very early marriage."]
+            elif n == 12: lines += ["Ever miserly; son is unsuccessful."]
+
+        # ——— JUPITER from Moon ———
+        elif pid == const._JUPITER:
+            if   n == 1:  lines += ["Long-lived, healthy, powerful and consistently wealthy."]
+            elif n == 2:  lines += ["Respected by rulers; swift; valorous; virtuous; long life (≈100 years)."]
+            elif n == 3:  lines += ["Liked by women; father gains wealth in the native’s 17th year."]
+            elif n == 4:  lines += ["Lacks comforts; maternal troubles; serves in others’ homes."]
+            elif n == 5:  lines += ["Good eyesight; valorous; wealthy; dominating; sons indicated."]
+            elif n == 6:  lines += ["Indifferent; homeless; long life but lives by low deeds/alms."]
+            elif n == 7:  lines += ["Long-lived; sweet-tongued; healthy yet impotent; jaundice-prone; family leader."]
+            elif n == 8:  lines += ["Frequent ailments and discomforts."]
+            elif n == 9:  lines += ["Wealthy and virtuous; serves guru and gods."]
+            elif n == 10: lines += ["Renounces wife and sons to become an ascetic."]
+            elif n == 11: lines += ["Blessed sons, vehicles and king-like dignity."]
+            elif n == 12:
+                lines += ["Opposes his own people."]
+                # extra condition (only when Jupiter aspects 6th house from lagna)
+                if _jupiter_aspects_house(5):
+                    lines += ["Still, Jupiter’s aspect to the 6th house promises comfort."]
+        
+        # ——— VENUS from Moon ———
+        elif pid == const._VENUS:
+            if   n == 1:  lines += ["Risk of death by water; paralysis; violent end."]
+            elif n == 2:  lines += ["Wealthy; scholarly; king-like valour."]
+            elif n == 3:  lines += ["Religious; wise; earnings via foreigners (mlecchhas)."]
+            elif n == 4:  lines += ["Phlegmatic; weak body; loses money in old age."]
+            elif n == 5:  lines += ["Many daughters; rich; little fame."]
+            elif n == 6:  lines += ["Prodigal; loses in conflict."]
+            elif n == 7:  lines += ["Lacks self-effort; foolish and suspicious nature."]
+            elif n == 8:  lines += ["Famed fighter; generous; wealthy; obtains various comforts."]
+            elif n == 9:  lines += ["Many brothers, sisters and friends."]
+            elif n == 10: lines += ["Supports both parents; long life."]
+            elif n == 11: lines += ["Long-lived; largely free of illness and opponents."]
+            elif n == 12: lines += ["Associates with others’ wives; lewd and foolish."]
+
+        # ——— SATURN from Moon ———
+        elif pid == const._SATURN:
+            if   n == 1:  lines += ["Adverse to health, friends and relatives."]
+            elif n == 2:  lines += ["Bad for mother; survives on goat’s milk (classical)."]
+            elif n == 3:  lines += ["Several daughters who die early (classical)."]
+            elif n == 4:  lines += ["Shows purposeful effort; destroys foes."]
+            elif n == 5:  lines += ["Wife is dark-complexioned and sweet-tongued."]
+            elif n == 6:  lines += ["Short-lived indications; many troubles."]
+            elif n == 7:  lines += ["Religious, generous; multiple marriages possible."]
+            elif n == 8:  lines += ["Bad for father; alms/charity said to reduce ill effects."]
+            elif n == 9:  lines += ["Loss of wealth during Saturn’s mahadasha (classical note)."]
+            elif n == 10: lines += ["King-like status; miserly yet wealthy."]
+            elif n == 11: lines += ["Poor health; irreligious."]
+            elif n == 12: lines += ["Poor, beggarly and irreligious."]
+
+        # ——— RAHU from Moon ———
+        elif pid == getattr(const, "_RAHU", -1):
+            if   n in (1, 10, 9): lines += ["Kingly rise; in old age retains only wealth."]
+            elif n in (6, 12):    lines += ["King or minister; wealthy."]
+            elif n in (4, 7):     lines += ["Adverse for parents; chronically unhappy."]
+            elif n in (2, 11):    lines += ["Fame and wealth but little real comfort."]
+            elif n == 5:          lines += ["Risk of death by drowning; few comforts."]
+            else:                  lines += ["General Rahu effects are mixed and erratic here."]
+
+        # Build HTML block
+        block = (
+            f"<div class='mt-4'>"
+            f"<h3 class='h6 text-center'>Reading based on {pname} from the Moon</h3>"
+            f"<p class='text-center mb-1'><em>{header}</em></p>"
+            + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines)
+            + _md_note_for(pid, pname)
+            + _weak_note_for(pid, pname)
+            + "</div>"
+        )
+        return block
+
+    # Assemble all requested grahas in order
+    GRAHAS_REL = [const._SUN, const._MARS, const._MERCURY,
+                  const._JUPITER, const._VENUS, const._SATURN,
+                  getattr(const, "_RAHU", -1)]
+
+    for g in GRAHAS_REL:
+        pname = PLANET_NAMES.get(g, str(g))
+        reading_moon_rel_html += _one_rel_block(g, pname)
 
     html_out = f"""
 <div class=\"container\"> 
@@ -3217,6 +3397,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading_saturn_html}
   {reading_rahu_html}
   {reading_ketu_html}
+  {reading_moon_rel_html}
 </div>
 """
     return html_out
