@@ -3364,6 +3364,447 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     for g in GRAHAS_REL:
         pname = PLANET_NAMES.get(g, str(g))
         reading_moon_rel_html += _one_rel_block(g, pname)
+        
+    # ── Readings based on Rāśi (sign) locations of grahas ───────────────────
+    # Helper: weakness flag & note (reuses SHAD_THRESH, avs, sb_res from above)
+    def _is_weak(pid: int) -> bool:
+        sb_val = _extract_shadbala_val(sb_res, pid)
+        sb_weak = (pid in SHAD_THRESH) and (sb_val is not None) and (sb_val < SHAD_THRESH[pid])
+        return (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_weak
+
+    def _weak_note_line(name: str, pid: int) -> str:
+        return (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {name} is weak</p>"
+            if _is_weak(pid) else ""
+        )
+
+    def _md_line(pid: int, name: str) -> str:
+        md = _md_period_for(pid)
+        if not md:
+            return ""
+        s, e = md
+        return (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {name}:</strong> "
+            f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+        )
+
+    # convenience: house index of a planet (for aspect/association checks)
+    def _house_idx_of(pid: int) -> int:
+        h = p2h.get(pid)
+        if h is not None:
+            return h
+        # fall back from sign
+        return (_planet_sign(pid) - lagna_sign) % 12
+
+    def _benefic_touches_pid(pid: int) -> bool:
+        """Any natural benefic conjoins or aspects the planet’s house."""
+        hidx = _house_idx_of(pid)
+        # conjunction
+        if any(p in BENEFICS_NATURAL for p, h in p2h.items() if h == hidx and p != pid):
+            return True
+        # classical 7th (+ specials handled inside helper)
+        return _benefic_aspects_house(hidx)
+
+    # ◼ SUN – sign based reading
+    sun_sign = _planet_sign(const._SUN)
+    sun_house_idx = _house_idx_of(const._SUN)
+    sun_lines = []
+    if sun_sign == 0:  # Mesha (Aries)
+        sun_lines += [
+            "Bold and combative; a striver with strong bones; fame by writing; restless, quick-tempered; blood/Pitta issues; wealth fluctuates; earnings linked to weapons or force.",
+        ]
+        # “If exalted, adverse influences are less marked”
+        if _EXALTS.get(const._SUN) == sun_sign:
+            sun_lines.append("Because the Sun is exalted here, the harsher notes tend to be muted.")
+    elif sun_sign == 1:  # Taurus
+        sun_lines += [
+            "Tolerant, shrewd in dealings; may earn via scents, clothing or even shady acts; avoids female company; musical; prone to mouth/eye issues.",
+        ]
+    elif sun_sign == 2:  # Gemini
+        sun_lines += [
+            "Attractive, learned and wealthy; sweet-spoken; often skilled in astrology; quick learner; gains status; ‘two mothers’ symbolism appears.",
+        ]
+    elif sun_sign == 3:  # Cancer
+        sun_lines += [
+            "Can feel poor or burdened; friction with father/relatives; heavy labour; yet articulate and religious-leaning; Kapha-Pitta ailments possible.",
+        ]
+        if _benefic_touches_pid(const._SUN):
+            sun_lines.append("Benefic support here gives a distinct royal bearing.")
+    elif sun_sign == 4:  # Leo
+        sun_lines += [
+            "Firm, vigorous and learned; destroys enemies; outdoorsy; enjoys meat; wealthy, consistent, yet ear troubles are possible.",
+        ]
+    elif sun_sign == 5:  # Virgo
+        sun_lines += [
+            "Refined, creative and mathematically inclined; shy; multilingual; respectful; able to earn well despite physical delicacy.",
+        ]
+    elif sun_sign == 6:  # Libra
+        sun_lines += [
+            "Quarrelsome and unstable in status; can be humiliated by authority; pauperising tendencies; pulled toward others’ partners; dabbling in liquor-/metal-work; rash ‘foolhardy’ courage.",
+        ]
+    elif sun_sign == 7:  # Scorpio
+        sun_lines += [
+            "Argumentative and quick to fight; weapon-skilled; daring yet harsh; clashes with parents; risk from poison/fire; can still follow proper religious discipline.",
+        ]
+    elif sun_sign == 8:  # Sagittarius
+        sun_lines += [
+            "Respected by authority; scholarly, devout and strong; adept with weapons; medical knowledge; worthy of reverence.",
+        ]
+    elif sun_sign == 9:  # Capricorn
+        sun_lines += [
+            "Covetous wanderer; poor comforts; opposes his own; clever yet indulges in unworthy acts; enjoys others’ wealth.",
+        ]
+    elif sun_sign == 10:  # Aquarius
+        sun_lines += [
+            "Sparse comforts/children; strong-limbed; base indulgences; rigid views; unstable friendships; prone to cardiac strain.",
+        ]
+    elif sun_sign == 11:  # Pisces
+        sun_lines += [
+            "Well-liked and learned; crushes enemies; earnings via water-products or land/irrigation; many brothers; hidden ailment possible.",
+        ]
+    sun_rashi_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Rāśi-based reading: Sun</h3>"
+        f"<p class='text-center mb-1'><em>Sun is in {SIGN_NAMES[sun_sign]}.</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in sun_lines)
+        + _md_line(const._SUN, "Sun") + _weak_note_line("Sun", const._SUN)
+        + "</div>"
+    )
+
+    # ◼ MOON – sign based reading
+    moon_sign = _planet_sign(const._MOON)
+    moon_deg_in_sign = (_get_lon(const._MOON) % 30.0)
+    moon_lines = []
+    if moon_sign == 0:
+        moon_lines += [
+            "Quick to anger yet wealthy; may lack siblings; sons indicated; courageous wanderer; lustful; pleases women; honoured by leaders; avoids deep waters; knee weakness; round pretty eyes; scar on head; scant body hair.",
+        ]
+    elif moon_sign == 1:
+        moon_lines += [
+            "Charitable and sensuous; honoured and pleasure-loving; very brave and strong; many daughters; forgiving and steady in friendship; yet finances/family/progeny can suffer.",
+        ]
+        # condition: first half vs second half of Taurus
+        if moon_deg_in_sign < 15:
+            moon_lines.append("With Moon in the first half of Taurus: adverse for the mother.")
+        else:
+            moon_lines.append("With Moon in the second half of Taurus: adverse for the father.")
+    elif moon_sign == 2:
+        moon_lines += [
+            "Poetic, skilful lover; handsome and very intelligent; jovial; scripture-learned; can read hidden thoughts; sweet-tongued.",
+        ]
+    elif moon_sign == 3:
+        moon_lines += [
+            "Wealth fluctuates; astrological bent; fast walker; owns homes/land; fortunate with friends; sensuous; fond of water sports/orchards.",
+        ]
+    elif moon_sign == 4:
+        moon_lines += [
+            "Mountain/forest affinity; broad features; energetic; women-averse; hunger/thirst and abdominal/dental issues; enjoys meat; charitable and aggressive; few sons; dutiful to parents.",
+        ]
+    elif moon_sign == 5:
+        moon_lines += [
+            "Attractive and very learned; teacher-type; religious; sweet and truthful; composed and helpful; many daughters, few sons; fond of arts; enjoys others’ wealth; foreign residence likely.",
+        ]
+    elif moon_sign == 6:
+        moon_lines += [
+            "Prominent nose/eyes, slim; hen-pecked; devout and ethical; skilled trader; avoids coveting; fortune fluctuates; some limb defect/illness; helpful to relatives yet abandoned by them.",
+        ]
+    elif moon_sign == 7:
+        moon_lines += [
+            "Early sickness; strong body later; covetous and atheistic strain; pretty eyes; wealthy; drawn to others’ wives; cruel-hearted; cut off from relatives; losses via rulers; prominent abdomen/forehead; secret sins.",
+        ]
+    elif moon_sign == 8:
+        moon_lines += [
+            "Sāttvic nature; wealthy and haughty; multi-talented; inherits property; charitable and strong; eloquent; devout yet opposes own kin; yields only to love and kindness.",
+        ]
+    elif moon_sign == 9:
+        moon_lines += [
+            "Musical and learned; subdued by women; charitable and forgiving; pleases spouse; religious; wandering and lazy; hates cold; fine eyes/skin; tall and handsome.",
+        ]
+    elif moon_sign == 10:
+        moon_lines += [
+            "Clever yet indolent; attached to others’ wives; sinful; sculptor; liked by friends; ill-natured and poor; enjoys others’ wealth.",
+        ]
+    elif moon_sign == 11:
+        moon_lines += [
+            "Highly talented; earns via sea-products; devoted to family; sculptor; defeats opponents; easily yields to women; kind and charitable; beautiful, well-proportioned body.",
+        ]
+    moon_rashi_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Rāśi-based reading: Moon</h3>"
+        f"<p class='text-center mb-1'><em>Moon is in {SIGN_NAMES[moon_sign]}.</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in moon_lines)
+        + _md_line(const._MOON, "Moon") + _weak_note_line("Moon", const._MOON)
+        + "</div>"
+    )
+
+    # ◼ MARS – sign based reading
+    mars_sign = _planet_sign(const._MARS)
+    mars_lines = []
+    if mars_sign == 0:
+        mars_lines += [
+            "Truth-teller, bold and battle-ready; fame and wealth; good speech; liked by all; gains in cattle/agriculture; quick-tempered; many relationships.",
+        ]
+    elif mars_sign == 1:
+        mars_lines += [
+            "Many enemies and few comforts; foul-tongued; sinful; can sing; tendency to spoil virtuous women.",
+        ]
+    elif mars_sign == 2:
+        mars_lines += [
+            "Large family; handsome; multi-disciplinary; poet/sculptor; religious bent; foreign travel indicated.",
+        ]
+    elif mars_sign == 3:
+        mars_lines += [
+            "Eats/lives at others’ place; sickly and miserable; earns via land/water pursuits.",
+        ]
+    elif mars_sign == 4:
+        mars_lines += [
+            "Valorous yet poor; forest-going and strenuous work; intolerant; hunter’s streak; irreligious tendencies; risk to first marriage.",
+        ]
+    elif mars_sign == 5:
+        mars_lines += [
+            "Wealthy with big family; sweet-tongued and learned; spend-thrift; religious; fearful of enemies.",
+        ]
+    elif mars_sign == 6:
+        mars_lines += [
+            "Itinerant speaker; good looks; affectionate to spouse/preceptors/friends; risk to first marriage.",
+        ]
+    elif mars_sign == 7:
+        mars_lines += [
+            "Conqueror and gang-leader type; truthful; harms foes; risk of injury by poison/fire/weapon.",
+        ]
+    elif mars_sign == 8:
+        mars_lines += [
+            "High rank; weapon injuries weaken; bitter speech; hard labour; disregards elders/preceptors.",
+        ]
+    elif mars_sign == 9:
+        mars_lines += [
+            "Army leader / kingly; brave in battle; earns by own effort; stays in homeland.",
+        ]
+    elif mars_sign == 10:
+        mars_lines += [
+            "Sickly; clashes with own people; arrogant; lying and jealous; unfortunate; hairy body.",
+        ]
+    elif mars_sign == 11:
+        mars_lines += [
+            "Humiliated by own people; disrespectful to priests; sickly and wicked; abroad; enjoys praise.",
+        ]
+    mars_rashi_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Rāśi-based reading: Mars</h3>"
+        f"<p class='text-center mb-1'><em>Mars is in {SIGN_NAMES[mars_sign]}.</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in mars_lines)
+        + _md_line(const._MARS, "Mars") + _weak_note_line("Mars", const._MARS)
+        + "</div>"
+    )
+    
+        # ── Rashi-location readings (Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) ──
+    def _build_rashi_block(pid: int, name: str, sign_idx: int, mapping: dict[int, list[str]]):
+        header = f"{name} is in {SIGN_NAMES[sign_idx]}."
+        lines = list(mapping.get(sign_idx, []))
+
+        # Special classical note: Jupiter in Aquarius ~ Cancer (per Varahamihira)
+        if name == "Jupiter" and sign_idx == 10:
+            lines.append("Classical note: some authorities treat Jupiter in Aquarius as giving results similar to Cancer.")
+
+        # Compose base HTML
+        html = (
+            f"<div class='mt-4'><h3 class='h6 text-center'>Rashi reading — {name}</h3>"
+            f"<p class='text-center mb-1'><em>{header}</em></p>"
+            + "".join(f"<p class='text-center mb-1'>• {txt}</p>" for txt in lines)
+            + "</div>"
+        )
+
+        # Mahadasha line
+        md = _md_period_for(pid)
+        md_note = ""
+        if md:
+            _s, _e = md
+            md_note = (
+                f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {name}:</strong> "
+                f"{_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
+            )
+
+        # Weak-note (avasthas or sub-threshold shadbala)
+        weak_note = ""
+        sb_val = _extract_shadbala_val(sb_res, pid)
+        under_thresh = (pid in SHAD_THRESH) and (sb_val is not None) and (sb_val < SHAD_THRESH[pid])
+        is_weak = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or under_thresh
+        if is_weak:
+            weak_note = (
+                f"<p class='text-center mt-2'><strong>Note:</strong> "
+                f"The above predictions may not manifest very strongly, since the {name} is weak</p>"
+            )
+
+        return html.replace("</div>", f"{md_note}{weak_note}</div>")
+
+    # Sign → bullet lines (reworded, faithful to source; not sugar-coated)
+    mercury_sign_readings = {
+        0: ["Sharp but contentious; cunning; restless; prone to lies; enjoys performance arts; highly sensual; spends and falls into debt or confinement."],
+        1: ["Wealth-attracting; dependable; charitable; multi-skilled; witty and musical; sensual yet respected."],
+        2: ["Well-dressed and wealthy; strong orator; proud; often cool toward sex; ‘two-mother’ upbringing motifs; versed in scripture; generally comfortable."],
+        3: ["Scholarly; may live abroad; talkative to a fault; drawn to pretty partners; clashes with friends/relatives; artistic; gains via water-related work."],
+        4: ["Roving and famous; learning suffers; poor memory; wealth/property strained; disliked by women; servile obligations weigh in."],
+        5: ["Religious intellect; learned poet/speaker/writer; honored; fearless; argumentative yet forgiving."],
+        6: ["Silvery tongue; skilled in many arts; devout; trader’s mind; spends readily; sensual indulgence present."],
+        7: ["Industrious yet irreligious; shameless and greedy; consorts with questionable partners; deceitful; covets others’ assets."],
+        8: ["Scriptural mastery; forgiving; renowned; teacher/preceptor type; brave and wealthy; persuasive writer; associates with worthy women."],
+        9: ["Servile and unstable; foolish back-biter; shunned by kin; hyper-fickle and lust-driven; cowardly posturing."],
+        10:["Harried by opponents; dereliction of duty; unclean; uncultured; defective speech; servility and timidity indicated."],
+        11:["Good-natured and pious; capable; helpful; wins friends’ affection yet may remain materially limited; distant-lands themes recur."],
+    }
+
+    jupiter_sign_readings = {
+        0: ["Pious yet argumentative; jeweled/ornamented; wealthy and famed; generous spender; opposed by many; scars from injuries; harsh streak appears."],
+        1: ["Corpulent and healthy; devoted to gods/priests/cows; fortunate; devoted to spouse; land and cattle; wise and benevolent."],
+        2: ["Ministerial; friends and sons support; attractive with fine eyes; eloquent; religious leanings."],
+        3: ["Wealthy and learned; strong and truthful; adored; king-like stature."],
+        4: ["Strong, learned, wealthy; pious commander/leader; aggressive edge; linked to forts/forests/mountains."],
+        5: ["Learned, pious, efficient; enjoys scents/flowers; crushes opponents; widely versed."],
+        6: ["Wise and soft-spoken; foreign earnings; scriptural erudition; attractive; trade-oriented."],
+        7: ["Scriptural commentator; clever; keeps worthy company; sickly and toilsome; quick-tempered; dips into forbidden pursuits."],
+        8: ["Religious teacher; very wealthy; charitable; high rank; pilgrimages and foreign circuits."],
+        9: ["Servile and over-worked; pleasures denied; weak; irreligious and fearful; distant-lands motif."],
+        10:["Sickly and greedy; loses money; poor judgment; liable to abdominal/dental disease; (some texts say Cancer-like results here)."],
+        11:["Vedic scholar; adorable and famous; distinctly hairy body."],
+    }
+
+    venus_sign_readings = {
+        0: ["Leads troops/teams; chases others’ partners; legal trouble via women; longs to go abroad; unreliable; provocative with authority; night-blindness risks."],
+        1: ["Many women and children; agriculture/cattle; fond of scents/flowers; free of enemies; attractive."],
+        2: ["Scripture-versed; very famous; beautiful body; writer/poet; friendly; income via song/dance; devout and sensual."],
+        3: ["Good deeds and learning; strong and religious; obtains objects of desire; two marriages possible; sickness from liquor/women."],
+        4: ["Money via women; fewer children; servile to women; destroys enemies; devoted to teachers/priests; generally comfortable and wealthy."],
+        5: ["Very rich; persuasive with women; pilgrimages; learning present but material comforts lacking."],
+        6: ["Earns by effort; loves garlands and fine clothes; foreign journeys; religiously inclined; wavers under pressure."],
+        7: ["Quarrelsome and notorious; irreligious; excessive talk; shunned by brothers; violent skills; poverty; genitourinary disease."],
+        8: ["Virtuous and liked; wealthy; high-ranking; large and heavyset; honored."],
+        9: ["Over-sensual and older partners; spendthrift; lean and transgressive; heart disease/impotence risk; covets others’ wealth."],
+        10:["Addicted to others’ spouses; irreligious; clashes with mentors/children; ugly, ill-clad and anxious."],
+        11:["Very wealthy; subdues opponents; famous; charitable; royal favor; loves swimming; gentle speech; learned."],
+    }
+
+    saturn_sign_readings = {
+        0: ["Weak constitution; worn by labor and excess; ill-tempered; deceitful; estranged from kin; unclean and disliked; sinful reputation."],
+        1: ["Poor and servile; consorts with older women; wicked associations; yields to others’ spouses; versatile; violates social norms in mate choice."],
+        2: ["Hounded by debt, prison, toil; deceitful; lust-inclined; lazy and wicked."],
+        3: ["Frail in childhood; mother-loss themes; poor yet learned; famous; opposes relatives; health issues linger."],
+        4: ["Skilled writer; quarrelsome; socially non-conforming; miserable and servile; bereft of wife and friends; taboo pursuits; quick-to-anger."],
+        5: ["Wicked and unsteady; fails repeatedly; effeminate tendencies; chases easy-morals women; sculptor/artisan bent; paradoxically helpful; has wealth and progeny."],
+        6: ["Regal bearing; sexually indulgent; eloquent; honored publicly; wanderer; linked with courtesans/dancers."],
+        7: ["Burns by fire/weapon/poison; temper and conceit; grabs others’ assets; taboo acts; insincere; losses and illness."],
+        8: ["Broad fame and contentment; steady income; many disciplines; good children; concise speech; honored widely."],
+        9: ["Ruler-aligned; controls others’ women and wealth; learned; artisan; admired and famous; foreign travel; courageous."],
+        10:["Very rich yet deceitful; drinks heavily; addicted to others’ wives; wicked and fickle; irreligious."],
+        11:["Respected, helpful and wealthy; religious pursuits; mild and cool temperament; knowledge of gems."],
+    }
+
+    # Build the 4 graha rashi blocks
+    rashi_mercury_html = _build_rashi_block(const._MERCURY, "Mercury", _planet_sign(const._MERCURY), mercury_sign_readings)
+    rashi_jupiter_html = _build_rashi_block(const._JUPITER, "Jupiter", _planet_sign(const._JUPITER), jupiter_sign_readings)
+    rashi_venus_html   = _build_rashi_block(const._VENUS,   "Venus",   _planet_sign(const._VENUS),   venus_sign_readings)
+    rashi_saturn_html  = _build_rashi_block(const._SATURN,  "Saturn",  _planet_sign(const._SATURN),  saturn_sign_readings)
+
+    # ── Nodes: conditional “favourable-sign” notes + benefic association/aspect ──
+    def _assoc_or_aspected_by_jupiter_or_mercury(target_house_idx: int) -> bool:
+        touched = False
+        for p, deltas in ((const._JUPITER, {4, 6, 8}), (const._MERCURY, {6})):  # Jup: 5/7/9; Merc: 7th
+            p_house = p2h.get(p)
+            if p_house is None:
+                continue
+            if p_house == target_house_idx:
+                touched = True
+            else:
+                delta = (target_house_idx - p_house) % 12
+                if delta in deltas:
+                    touched = True
+        return touched
+
+    # RAHU
+    rashi_rahu_html = ""
+    if hasattr(const, "_RAHU"):
+        rahu_pid = const._RAHU
+        rahu_sign = _planet_sign(rahu_pid)
+        rahu_house = p2h.get(rahu_pid)
+        favourable_rahu = {3, 5, 8, 7}   # Cancer, Virgo, Sagittarius, Scorpio
+        exalt_rahu = 1                   # Taurus
+        owns_rahu = {10}                 # Aquarius (some say Virgo too)
+        mool_rahu = 2                    # Gemini
+
+        lines_r = []
+        header_r = f"Rahu is in {SIGN_NAMES[rahu_sign]}."
+        # Favourable-sign condition
+        if rahu_sign in favourable_rahu:
+            lines_r.append(
+                "In this sign, classics credit Rahu with benefits: growth in wealth, help from friends/authorities, comforts, religious leanings, new home/clothes, and honoured foreign travels."
+            )
+        # Specific sign dignities (only if actually met)
+        if rahu_sign == exalt_rahu:
+            lines_r.append("Exaltation sign for Rahu — power and prominence are amplified.")
+        if rahu_sign in owns_rahu:
+            lines_r.append("Own-sign placement for Rahu.")
+        if rahu_sign == mool_rahu:
+            lines_r.append("Moolatrikona sign for Rahu — functional strength in worldly dealings.")
+        # Benefic association/aspect (Jupiter or Mercury) condition
+        if rahu_house is not None and _assoc_or_aspected_by_jupiter_or_mercury(rahu_house):
+            lines_r.append("With Jupiter/Mercury association or aspect: benefic outcomes are enhanced.")
+
+        if lines_r:
+            rashi_rahu_html = (
+                f"<div class='mt-4'><h3 class='h6 text-center'>Rashi reading — Rahu</h3>"
+                f"<p class='text-center mb-1'><em>{header_r}</em></p>"
+                + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines_r)
+                + "</div>"
+            )
+            # MD line
+            mdR = _md_period_for(rahu_pid)
+            if mdR:
+                _sr, _er = mdR
+                rashi_rahu_html = rashi_rahu_html.replace("</div>",
+                    f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of Rahu:</strong> {_sr:%Y-%m-%d} – {_er:%Y-%m-%d}</p></div>"
+                )
+            # Weak note (only avasthas apply; shadbala thresholds are not classically defined for nodes)
+            if (rahu_pid in avs["bala"]) or (rahu_pid in avs["mrita"]) or (rahu_pid in avs["sushupti"]):
+                rashi_rahu_html = rashi_rahu_html.replace("</div>",
+                    "<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the Rahu is weak</p></div>"
+                )
+
+    # KETU
+    rashi_ketu_html = ""
+    if hasattr(const, "_KETU"):
+        ketu_pid = const._KETU
+        ketu_sign = _planet_sign(ketu_pid)
+        ketu_house = p2h.get(ketu_pid)
+        exalt_ketu = 7                   # Scorpio
+        owns_ketu = {7, 11}             # Scorpio (or Pisces)
+        mool_ketu = 8                   # Sagittarius
+
+        lines_k = []
+        header_k = f"Ketu is in {SIGN_NAMES[ketu_sign]}."
+        # “In these signs Ketu gives favourable results”
+        if (ketu_sign == exalt_ketu) or (ketu_sign in owns_ketu) or (ketu_sign == mool_ketu):
+            lines_k.append("In this sign, classics say Ketu tends to give favourable outcomes.")
+        # Benefic association/aspect (Jupiter or Mercury) condition
+        if ketu_house is not None and _assoc_or_aspected_by_jupiter_or_mercury(ketu_house):
+            lines_k.append("With Jupiter/Mercury association or aspect: benefic results are strengthened.")
+
+        if lines_k:
+            rashi_ketu_html = (
+                f"<div class='mt-4'><h3 class='h6 text-center'>Rashi reading — Ketu</h3>"
+                f"<p class='text-center mb-1'><em>{header_k}</em></p>"
+                + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines_k)
+                + "</div>"
+            )
+            # MD line
+            mdK = _md_period_for(ketu_pid)
+            if mdK:
+                _sk, _ek = mdK
+                rashi_ketu_html = rashi_ketu_html.replace("</div>",
+                    f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of Ketu:</strong> {_sk:%Y-%m-%d} – {_ek:%Y-%m-%d}</p></div>"
+                )
+            # Weak note (only avasthas apply; shadbala thresholds are not classically defined for nodes)
+            if (ketu_pid in avs["bala"]) or (ketu_pid in avs["mrita"]) or (ketu_pid in avs["sushupti"]):
+                rashi_ketu_html = rashi_ketu_html.replace("</div>",
+                    "<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the Ketu is weak</p></div>"
+                )
 
     html_out = f"""
 <div class=\"container\"> 
@@ -3398,6 +3839,15 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading_rahu_html}
   {reading_ketu_html}
   {reading_moon_rel_html}
+  {sun_rashi_html}
+  {moon_rashi_html}
+  {mars_rashi_html}
+  {mercury_rashi_html}
+  {jupiter_rashi_html}
+  {venus_rashi_html}
+  {saturn_rashi_html}
+  {rahu_rashi_html}
+  {ketu_rashi_html}
 </div>
 """
     return html_out
