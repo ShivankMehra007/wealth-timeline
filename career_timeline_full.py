@@ -5226,242 +5226,218 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         + "</div>"
     )
     
-        # ── Yogas & Doṣas – auto-discovery, evidence & effects ─────────────────
-    def _effect_hint(name: str) -> str:
-        """Lightweight classic-effect hint when the library output lacks one."""
-        n = (name or "").lower().replace("_", " ").strip()
-        if "raja" in n or "rajayoga" in n:
-            return "Classic rāja-yoga: rise in status, authority, patronage; support from power."
-        if "dhan" in n or "dhana" in n or "wealth" in n:
-            return "Wealth-yoga: accumulation of assets, earnings and financial leverage."
-        if "gaja" in n or "kesari" in n:
-            return "Gaja-Keśarī: reputation, patronage, counsel, protection from harm."
-        if "chandra" in n and "mangal" in n:
-            return "Chandra-Maṅgala: trading/commercial drive, liquidity, business acumen."
-        if "pancha" in n or "mahapurusha" in n or "panch" in n:
-            return "Mahāpuruṣa yoga: strong worldly prominence (planet-specific expression)."
-        if "vipareet" in n or "viparita" in n:
-            return "Viparīta rāja-yoga: gains via adversity, hidden support after setbacks."
-        if "sakata" in n:
-            return "Sakata-doṣa: boom-bust cycles, wavering fortunes linked to the Moon."
-        if "kemadrum" in n:
-            return "Kema-druma: isolation/instability of mind and resources; remedial support helps."
-        if "daridra" in n:
-            return "Daridra doṣa: poverty/shortfall indications unless strongly cancelled."
-        if "kala" in n and "sarpa" in n:
-            return "Kāla-Sarp(a): constrictive patterns, sudden rises/falls; cancellations can moderate."
-        if "pitra" in n or "pitri" in n:
-            return "Pitṛ-doṣa: ancestral/lineage obligations; delays till propitiated or offset."
-        return "Favourable/Adverse yoga per classical rules; strength varies with dignity and aspect."
+    # ───────────────────────────────────────────────────────────────────────────
+    # Classical Yogas/Doshas – enumerate with evidence and predicted effects
+    # Renders a full list instead of counts.
+    # Requires: natal_pp, asc_sign, p2h, PLANET_NAMES, _SIGN_LORD, _planet_sign
+    # ───────────────────────────────────────────────────────────────────────────
 
-    def _stringify(obj) -> str:
-        if obj is None:
-            return ""
-        if isinstance(obj, (str, int, float)):
-            return str(obj)
-        if isinstance(obj, (list, tuple, set)):
-            parts = []
-            for it in obj:
-                parts.append(_stringify(it))
-            return "; ".join([p for p in parts if p])
-        if isinstance(obj, dict):
-            kv = []
-            for k, v in obj.items():
-                if isinstance(v, (dict, list, tuple)) and not v:
-                    continue
-                kv.append(f"{k}: {_stringify(v)}")
-            return "; ".join([p for p in kv if p])
-        return str(obj)
+    def _house_of(pid: int) -> int | None:
+        """Return 0-based house index for planet, robust to missing p2h entries."""
+        h = p2h.get(pid)
+        if h is not None:
+            return int(h)
+        try:
+            s = _planet_sign(pid)
+            return (s - asc_sign) % 12
+        except Exception:
+            return None
 
-    def _normalise_yoga_output(data) -> list[dict]:
-        """Turn any reasonable library output into [{name, evidence, effects}] items."""
+    def _houses_ruled_by(pid: int) -> list[int]:
+        """Return list of 1-based houses ruled by pid for this lagna."""
         out = []
-        if not data:
-            return out
-        # Dict: name -> details
-        if isinstance(data, dict):
-            for k, v in data.items():
-                name = _stringify(k)
-                evidence = ""
-                effects = ""
-                if isinstance(v, dict):
-                    # look for common keys
-                    evidence = _stringify(v.get("evidence") or v.get("details") or v.get("why") or v.get("comment") or v.get("conditions"))
-                    effects  = _stringify(v.get("effect") or v.get("effects") or v.get("result") or v.get("prediction"))
-                    if not effects:
-                        effects = _effect_hint(name)
-                elif isinstance(v, (list, tuple, set)):
-                    evidence = _stringify(v)
-                    effects = _effect_hint(name)
-                elif isinstance(v, (str, int, float, bool)):
-                    if isinstance(v, bool):
-                        if not v:
-                            continue
-                        evidence = "Detected by yoga checker."
-                        effects = _effect_hint(name)
-                    else:
-                        # could be a textual verdict
-                        txt = _stringify(v)
-                        evidence = txt
-                        effects  = _effect_hint(name)
-                else:
-                    evidence = _stringify(v)
-                    effects = _effect_hint(name)
-                out.append({"name": name, "evidence": evidence, "effects": effects})
-            return out
-        # List/tuple: maybe list of names or detailed tuples
-        if isinstance(data, (list, tuple, set)):
-            for item in data:
-                if isinstance(item, (tuple, list)) and item:
-                    name = _stringify(item[0])
-                    details = _stringify(item[1:]) if len(item) > 1 else ""
-                    out.append({"name": name, "evidence": details or "Detected.", "effects": _effect_hint(name)})
-                else:
-                    name = _stringify(item)
-                    out.append({"name": name, "evidence": "Detected.", "effects": _effect_hint(name)})
-            return out
-        # Fallback boolean/string
-        if isinstance(data, bool):
-            if data:
-                out.append({"name": "Yoga", "evidence": "Detected.", "effects": _effect_hint("yoga")})
-            return out
-        if isinstance(data, (str, int, float)):
-            out.append({"name": str(data), "evidence": "Detected.", "effects": _effect_hint(str(data))})
-            return out
+        for h0 in range(12):
+            lord = _SIGN_LORD[(asc_sign + h0) % 12]
+            if lord == pid:
+                out.append(h0 + 1)
         return out
 
-    def _try_call(func, *args):
-        try:
-            return func(*args)
-        except TypeError:
-            # Try alternate signatures commonly seen in pyjhora forks
-            for alt in (
-                (natal_pp,),                           # (pp)
-                (natal_pp, asc_sign),                  # (pp, asc)
-                (natal_pp, p2h),                       # (pp, p2h)
-                (natal_pp, asc_sign, p2h),             # (pp, asc, p2h)
-            ):
-                try:
-                    return func(*alt)
-                except Exception:
-                    continue
-        except Exception:
-            pass
-        return None
+    def _is_conj(p1: int, p2: int) -> bool:
+        h1, h2 = _house_of(p1), _house_of(p2)
+        return (h1 is not None) and (h1 == h2)
 
-    # 1) Collect yogas from jd_yoga & jd_raja by scanning for relevant getters
-    yoga_items: list[dict] = []
-    scanned_funcs = []
+    def _is_exchange(p1: int, p2: int) -> bool:
+        """Simple parivartana: lord of house A placed in house B and vice-versa (by house lords)."""
+        # find each planet's owned houses and their current houses
+        h1_now, h2_now = _house_of(p1), _house_of(p2)
+        if h1_now is None or h2_now is None:
+            return False
+        # If p1 rules the sign in h2_now and p2 rules the sign in h1_now
+        lord_h1now = _SIGN_LORD[(asc_sign + h1_now) % 12]
+        lord_h2now = _SIGN_LORD[(asc_sign + h2_now) % 12]
+        return lord_h2now == p1 and lord_h1now == p2
 
-    def _gather_from_module(mod):
-        names = [n for n in dir(mod)
-                 if callable(getattr(mod, n))
-                 and (("yoga" in n.lower() and n.lower().startswith(("get_", "list_", "detect_", "calc_", "compute_")))
-                      or n.lower() in {"yogas", "getyogas", "rajayogas", "get_rajayogas", "get_raja_yogas"})]
-        for n in names:
-            func = getattr(mod, n, None)
-            if not func:
-                continue
-            if func in scanned_funcs:
-                continue
-            scanned_funcs.append(func)
-            res = _try_call(func, natal_pp)
-            items = _normalise_yoga_output(res)
-            yoga_items.extend(items)
+    def _house_name(h0: int) -> str:
+        return ["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"][h0]
 
-    for _mod in (jd_yoga, jd_raja):
-        _gather_from_module(_mod)
+    def _planet_name(pid: int) -> str:
+        return PLANET_NAMES.get(pid, f"P{pid}")
 
-    # Deduplicate by lowercase name while preserving first evidence/effects
-    seen = set()
-    deduped = []
-    for it in yoga_items:
-        key = (it.get("name") or "").strip().lower()
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        deduped.append(it)
-    yoga_items = deduped
+    def _yoga_item(name: str, evidence: list[str], effects: str) -> dict:
+        return {"name": name, "evidence": evidence, "effects": effects}
 
-    # 2) Doshas from current chart state (combustion, retrograde, graha-yuddha)
-    dosha_items: list[dict] = []
+    def _build_yoga_list() -> list[dict]:
+        items: list[dict] = []
 
-    # combustion
-    for pid in sorted(_combust_set):
-        dosha_items.append({
-            "name": f"Combustion – {PLANET_NAMES.get(pid, pid)}",
-            "evidence": f"{PLANET_NAMES.get(pid, pid)} is reported combust (close to Sun) per library check.",
-            "effects": "Weakens expression/significations of the planet; delays, volatility, lowered support."
-        })
-    # retrograde
-    for pid in sorted(_retro_set):
-        # skip Rahu/Ketu which are always retro by concept
-        if pid in (getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)):
-            continue
-        dosha_items.append({
-            "name": f"Retrograde – {PLANET_NAMES.get(pid, pid)}",
-            "evidence": f"{PLANET_NAMES.get(pid, pid)} is retrograde at birth.",
-            "effects": "Non-linear results, reversals/redo cycles, internalised themes; can be strong yet eccentric."
-        })
-    # graha-yuddha (planetary war) if available
-    gy_pairs = []
-    for func in (getattr(pdrik, "planets_in_graha_yudh", None),
-                 getattr(jd_charts, "planets_in_graha_yudh", None)):
-        if func:
-            try:
-                gy_pairs = func(natal_pp) or []
-                break
-            except Exception:
-                pass
-    for pair in gy_pairs:
-        if not (isinstance(pair, (list, tuple)) and len(pair) == 2):
-            continue
-        winner, loser = pair
-        wname = PLANET_NAMES.get(winner, winner)
-        lname = PLANET_NAMES.get(loser, loser)
-        dosha_items.append({
-            "name": f"Graha-Yuddha (Planetary War): {wname} defeats {lname}",
-            "evidence": f"{wname} is closer to the ecliptic latitude/longitudinal dominance versus {lname} at birth (library reports a war pair).",
-            "effects": f"The winner ({wname}) gains prominence; the loser ({lname}) suffers weakness/obstruction in its portfolios."
-        })
+        # --- Raja Yoga (kendra–trikona lords association / placement) -------------
+        kendra = {1,4,7,10}
+        trikona = {1,5,9}
+        # collect lords
+        k_lords = {h: _SIGN_LORD[(asc_sign + (h-1)) % 12] for h in kendra}
+        t_lords = {h: _SIGN_LORD[(asc_sign + (h-1)) % 12] for h in trikona}
 
-    # 3) Build HTML
-    if not yoga_items and not dosha_items:
-        yoga_dosha_html = (
-            "<div class='mt-4'>"
-            "<h3 class='h6 text-center'>Yogas & Doṣas</h3>"
-            "<p class='text-center mb-1'>No standard yogas or doṣas were detected by the current library checks.</p>"
-            "</div>"
-        )
-    else:
-        parts = ["<div class='mt-4'><h3 class='h6 text-center'>Yogas & Doṣas</h3>"]
+        raja_evd: list[str] = []
+        # (a) trinal lord in a kendra OR kendra lord in a trine
+        for th, tl in t_lords.items():
+            h_now = _house_of(tl)
+            if h_now in {h-1 for h in kendra}:
+                raja_evd.append(f"L{th} ({_planet_name(tl)}) is in a kendra ({_house_name(h_now)})")
+        for kh, kl in k_lords.items():
+            h_now = _house_of(kl)
+            if h_now in {h-1 for h in trikona}:
+                raja_evd.append(f"L{kh} ({_planet_name(kl)}) is in a trine ({_house_name(h_now)})")
+        # (b) conjunction between any kendra lord and any trikona lord
+        for kh, kl in k_lords.items():
+            for th, tl in t_lords.items():
+                if _is_conj(kl, tl):
+                    h0 = _house_of(kl)
+                    raja_evd.append(f"L{kh} ({_planet_name(kl)}) conjunct L{th} ({_planet_name(tl)}) in {_house_name(h0)}")
+                elif _is_exchange(kl, tl):
+                    raja_evd.append(f"L{kh} ({_planet_name(kl)}) in parivartana with L{th} ({_planet_name(tl)})")
 
-        if yoga_items:
-            parts.append("<h4 class='h6 text-center mt-2'>Applicable Yogas</h4>")
-            for it in yoga_items:
-                nm = _stringify(it.get("name"))
-                ev = _stringify(it.get("evidence"))
-                ef = _stringify(it.get("effects"))
-                parts.append(f"<p class='text-center mb-1'><strong>{nm}</strong></p>")
-                if ev:
-                    parts.append(f"<p class='text-center mb-1'>Evidence: {ev}</p>")
-                if ef:
-                    parts.append(f"<p class='text-center mb-2'>Predicted effects: {ef}</p>")
+        if raja_evd:
+            items.append(_yoga_item(
+                "Rāja-yoga",
+                raja_evd,
+                "Rise in status, authority and recognition; prominence during the dashā of the involved lords."
+            ))
 
-        if dosha_items:
-            parts.append("<h4 class='h6 text-center mt-2'>Applicable Doṣas</h4>")
-            for it in dosha_items:
-                nm = _stringify(it.get("name"))
-                ev = _stringify(it.get("evidence"))
-                ef = _stringify(it.get("effects"))
-                parts.append(f"<p class='text-center mb-1'><strong>{nm}</strong></p>")
-                if ev:
-                    parts.append(f"<p class='text-center mb-1'>Evidence: {ev}</p>")
-                if ef:
-                    parts.append(f"<p class='text-center mb-2'>Predicted effects: {ef}</p>")
+        # --- Dhana Yogas (2/11 and wealth-supporting combinations) ----------------
+        L1 = _SIGN_LORD[asc_sign]
+        L2 = _SIGN_LORD[(asc_sign + 1) % 12]
+        L5 = _SIGN_LORD[(asc_sign + 4) % 12]
+        L9 = _SIGN_LORD[(asc_sign + 8) % 12]
+        L11 = _SIGN_LORD[(asc_sign + 10) % 12]
 
+        dhana_evd: list[str] = []
+        # Core rules
+        if _is_conj(L2, L11) or _is_exchange(L2, L11):
+            h0 = _house_of(L2)
+            dhana_evd.append(f"L2 ({_planet_name(L2)}) associated with L11 ({_planet_name(L11)})"
+                             + (f" in {_house_name(h0)}" if h0 is not None else ""))
+        hL2, hL11 = _house_of(L2), _house_of(L11)
+        if hL2 == 10:  # 11th house is index 10 (0-based)
+            dhana_evd.append("L2 placed in 11th (income/gains)")
+        if hL11 == 1:  # 2nd house is index 1 (0-based)
+            dhana_evd.append("L11 placed in 2nd (accumulation/wealth)")
+        # supportive: L1 with L2/11, L5/9 with L2/11
+        for p, tag in [(L1,"L1"), (L5,"L5"), (L9,"L9")]:
+            if _is_conj(p, L2):
+                h0 = _house_of(p)
+                dhana_evd.append(f"{tag} ({_planet_name(p)}) conjunct L2 ({_planet_name(L2)}) in {_house_name(h0)}")
+            if _is_conj(p, L11):
+                h0 = _house_of(p)
+                dhana_evd.append(f"{tag} ({_planet_name(p)}) conjunct L11 ({_planet_name(L11)}) in {_house_name(h0)}")
+
+        if dhana_evd:
+            items.append(_yoga_item(
+                "Dhana-yoga",
+                dhana_evd,
+                "Capacity to earn, accumulate and retain wealth; gains through networks and effort; results peak in the dashā of the connected lords."
+            ))
+
+        # --- Gaja-Keśarī (Guru in kendra from Moon) --------------------------------
+        moon_h = _house_of(const._MOON)
+        jup_h  = _house_of(const._JUPITER)
+        if (moon_h is not None) and (jup_h is not None):
+            if (jup_h - moon_h) % 12 in {0,3,6,9}:  # 1/4/7/10 from Moon
+                items.append(_yoga_item(
+                    "Gaja-Keśarī-yoga",
+                    [f"Jupiter in a kendra from Moon ({_house_name(jup_h)} from Moon’s sign)"],
+                    "Popularity, protection, intelligence and support from teachers/authority; auspicious during Moon/Jupiter periods."
+                ))
+
+        # --- Viparīta Rāja-yoga (6/8/12 lords in other dusthānas or exchange) -----
+        L6  = _SIGN_LORD[(asc_sign + 5) % 12]
+        L8  = _SIGN_LORD[(asc_sign + 7) % 12]
+        L12 = _SIGN_LORD[(asc_sign + 11) % 12]
+        vry_evd: list[str] = []
+        for p, lbl in [(L6, "L6"), (L8, "L8"), (L12, "L12")]:
+            h = _house_of(p)
+            if h in {5,7,11}:  # 6th/8th/12th are 5/7/11 in 0-based
+                vry_evd.append(f"{lbl} ({_planet_name(p)}) placed in another dusthāna ({_house_name(h)})")
+        if _is_exchange(L6, L8) or _is_exchange(L6, L12) or _is_exchange(L8, L12):
+            vry_evd.append("Exchange between dusthāna lords (parivartana)")
+
+        if vry_evd:
+            items.append(_yoga_item(
+                "Viparīta Rāja-yoga",
+                vry_evd,
+                "Rise after reversals; ability to defeat enemies and overcome debts/diseases; results during dashās of the involved dusthāna lords."
+            ))
+
+        # --- Chandra-Maṅgala (Moon & Mars conjunction) ----------------------------
+        if _is_conj(const._MOON, const._MARS):
+            h0 = _house_of(const._MOON)
+            items.append(_yoga_item(
+                "Chandra-Maṅgala-yoga",
+                [f"Moon conjunct Mars in {_house_name(h0)}"],
+                "Strong drive for acquisition, entrepreneurial energy; can bring financial volatility depending on house and dignity."
+            ))
+
+        # --- A few headline doshas (easy to verify) --------------------------------
+        # (1) Śakata-yoga: Moon in 6/8 from Jupiter
+        if (moon_h is not None) and (jup_h is not None) and ((moon_h - jup_h) % 12 in {5,7}):
+            items.append(_yoga_item(
+                "Śakata-doṣa",
+                [f"Moon is {_house_name(moon_h)} from Jupiter (6/8 relationship)"],
+                "Fluctuating fortune, stop-go progress; mitigates with strong benefic support or during favourable dashās."
+            ))
+        # (2) Kemadruma (simplified): no classical planets in houses 2 and 12 from Moon
+        # (ignoring Sun, Rahu, Ketu for a simple check)
+        if moon_h is not None:
+            empties = True
+            for off in (1, 11):  # 2nd/12th from Moon (0-based offsets)
+                any_planet = False
+                for p in (const._MERCURY, const._VENUS, const._MARS, const._JUPITER, const._SATURN):
+                    if _house_of(p) == (moon_h + off) % 12:
+                        any_planet = True
+                        break
+                if any_planet:
+                    empties = False
+                    break
+            if empties:
+                items.append(_yoga_item(
+                    "Kemadruma-doṣa (simplified check)",
+                    ["No Mercury/Venus/Mars/Jupiter/Saturn in 2nd and 12th from Moon"],
+                    "Emotional isolation and resource vacuums; reduces with strong Moon or benefic aspects."
+                ))
+
+        return items
+
+    def _render_yoga_list_html(items: list[dict]) -> str:
+        if not items:
+            return (
+                "<div class='mt-4'>"
+                "<h3 class='h6 text-center'>Applicable Yogas & Doṣas</h3>"
+                "<p class='text-center'>No classical yoga/doṣa matched the basic rules checked.</p>"
+                "</div>"
+            )
+        parts = ["<div class='mt-4'><h3 class='h6 text-center'>Applicable Yogas & Doṣas</h3>"]
+        for it in items:
+            parts.append(f"<h4 class='h6 text-center mt-3'>{it['name']}</h4>")
+            if it.get("evidence"):
+                parts.append("<p class='text-center mb-1'><strong>Evidence:</strong></p>")
+                for ev in it["evidence"]:
+                    parts.append(f"<p class='text-center mb-1'>• {ev}</p>")
+            if it.get("effects"):
+                parts.append(f"<p class='text-center mb-2'><strong>Predicted effects:</strong> {it['effects']}</p>")
         parts.append("</div>")
-        yoga_dosha_html = "".join(parts)
+        return "".join(parts)
+
+    # Build and append the section
+    _yoga_items = _build_yoga_list()
+    yogas_html = _render_yoga_list_html(_yoga_items)
 
     html_out = f"""
 <div class=\"container\"> 
@@ -5512,7 +5488,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {jupiter_aspects_html}
   {venus_aspects_html}
   {saturn_aspects_html}
-  {yoga_dosha_html}
+  {yogas_html}
 </div>
 """
     return html_out
