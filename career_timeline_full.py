@@ -5438,6 +5438,274 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     # Build and append the section
     _yoga_items = _build_yoga_list()
     yogas_html = _render_yoga_list_html(_yoga_items)
+    
+    # ───────────────────────────────────────────────────────────────────────────
+    # Deeptādi & Lajjitādi Avasthas – per-planet reading with evidence & MD note
+    # ───────────────────────────────────────────────────────────────────────────
+
+    def _house_of(pid: int) -> int | None:
+        """0-based house index for pid; fallback from sign if p2h is missing."""
+        h = p2h.get(pid)
+        if h is not None:
+            return int(h)
+        try:
+            s = _planet_sign(pid)
+            return (s - asc_sign) % 12
+        except Exception:
+            return None
+
+    def _house_name(h0: int) -> str:
+        return ["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"][h0]
+
+    def _sign_name(sign: int) -> str:
+        return ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"][sign]
+
+    def _planet_name(pid: int) -> str:
+        return PLANET_NAMES.get(pid, f"P{pid}")
+
+    # Mūlatrikoṇa signs (sign-only granularity; degrees ignored for robustness)
+    _MOOL = {
+        const._SUN: 4,       # Leo
+        const._MOON: 1,      # Taurus
+        const._MARS: 0,      # Aries
+        const._MERCURY: 5,   # Virgo
+        const._JUPITER: 8,   # Sagittarius
+        const._VENUS: 6,     # Libra
+        const._SATURN: 10,   # Aquarius
+    }
+
+    # Natural malefics / benefics
+    NAT_MALEFICS = {const._SUN, const._MARS, const._SATURN, getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)}
+    NAT_BENEFICS = {const._JUPITER, const._VENUS, const._MOON, const._MERCURY}
+
+    # Aspect model: everyone 7th; + special—Mars (4,8), Jupiter (5,9), Saturn (3,10), Rahu/Ketu (5,9)
+    def _aspects(asp_pid: int, target_house_idx: int) -> bool:
+        src = _house_of(asp_pid)
+        if src is None:
+            return False
+        delta = (target_house_idx - src) % 12
+        special = {
+            const._MARS: {3, 6, 7},     # 4th, 7th, 8th
+            const._JUPITER: {4, 6, 8},  # 5th, 7th, 9th
+            const._SATURN: {2, 6, 9},   # 3rd, 7th, 10th
+            getattr(const, "_RAHU", -1): {4, 6, 8},
+            getattr(const, "_KETU", -2): {4, 6, 8},
+        }
+        return delta in special.get(asp_pid, {6})
+
+    def _any_aspect_from(group: set[int], target_house_idx: int) -> bool:
+        return any(_aspects(p, target_house_idx) for p in group if _house_of(p) is not None)
+
+    def _conj_with(pid: int, group: set[int]) -> set[int]:
+        h = _house_of(pid)
+        if h is None:
+            return set()
+        return {p for p in group if p2h.get(p) == h and p != pid}
+
+    def _lord_of_sign(sign: int) -> int:
+        return _SIGN_LORD[sign]
+
+    def _relation_to_lord(pid: int, sign: int) -> str:
+        """friend / adhi-mitra (mutual friend) / neutral / enemy, based on permanent relations."""
+        lord = _lord_of_sign(sign)
+        if lord == pid:
+            return "own"
+        pf = _FRIENDS.get(pid, set())
+        pn = _NEUTRALS.get(pid, set())
+        if lord in pf and pid in _FRIENDS.get(lord, set()):
+            return "adhi-mitra"
+        if lord in pf:
+            return "friend"
+        if lord in pn:
+            return "neutral"
+        return "enemy"
+
+    def _deeptadi_for(pid: int) -> list[tuple[str, list[str], str]]:
+        """Return [(avastha_name, evidence_lines, effects_para), ...] for Deeptādi."""
+        out = []
+        sign = _planet_sign(pid)
+        hidx = _house_of(pid)
+        if sign is None or hidx is None:
+            return out
+        name = _planet_name(pid)
+        lord = _lord_of_sign(sign)
+        rel = _relation_to_lord(pid, sign)
+
+        # 1 Deepta – exaltation or moolatrikona
+        if sign == _EXALTS.get(pid) or sign == _MOOL.get(pid):
+            ev = [f"{name} is {'exalted' if sign == _EXALTS.get(pid) else 'in moolatrikona'} in {_sign_name(sign)}"]
+            out.append(("Deepta (luminous)", ev,
+                        "Tends to confer high status, courage, wealth and comforts—including vehicles and official favours—during its periods."))
+
+        # 2 Swastha – own sign
+        if _SIGN_LORD[sign] == pid:
+            out.append(("Swastha (stable)", [f"{name} is in its own sign ({_sign_name(sign)})"],
+                        "Supports health, learning and reputation; often brings property, spousal support, patronage and a turn toward dharma."))
+
+        # 3 Mudita – in sign of an adhi-mitra (great friend)
+        if rel == "adhi-mitra":
+            out.append(("Mudita (delighted)", [f"{name} is in the sign of a mutual friend (adhi-mitra): lord {_planet_name(lord)}"],
+                        "Promises money, fine clothes and fragrances, vehicles and ornaments, alongside genuine interest in religious practice."))
+
+        # 4 Shanta – in friend’s sign
+        if rel == "friend":
+            out.append(("Shanta (quiescent)", [f"{name} is in the sign of a permanent friend: lord {_planet_name(lord)}"],
+                        "Brings favour from authority, abundant comforts and lands, and a calmer mind suited to scripture and meditation."))
+
+        # 5 Deena – neutral’s sign
+        if rel == "neutral":
+            out.append(("Deena (deficient)", [f"{name} is in a neutral’s sign: lord {_planet_name(lord)}"],
+                        "Points to changes of role or residence, friction with close ones, humiliation and bouts of ill-health."))
+
+        # 6 Dukhi – enemy’s sign
+        if rel == "enemy":
+            out.append(("Dukhi (tormented)", [f"{name} is in an enemy’s sign: lord {_planet_name(lord)}"],
+                        "Suggests displacement/foreign stay, separations, and fears tied to theft, fire or official censure."))
+
+        # 7 Vikala – associated with a malefic (conjunction)
+        mal_conj = _conj_with(pid, NAT_MALEFICS)
+        if mal_conj:
+            out.append(("Vikala (grief-stricken)",
+                        [f"{name} is conjoined with malefic(s): " + ", ".join(_planet_name(p) for p in sorted(mal_conj))],
+                        "Mental strain, separations from friends, and troubles involving spouse/children or theft can color its periods."))
+
+        # 8 Khala – in the sign of a malefic (sign lord = natural malefic)
+        if _lord_of_sign(sign) in NAT_MALEFICS:
+            out.append(("Khala (wicked)", [f"Sign lord is a natural malefic: {_planet_name(_lord_of_sign(sign))}"],
+                        "Inclines toward quarrels, paternal estrangement and loss of lands/wealth, with humiliation from one’s own circle."))
+
+        # 9 Kruddha – associated with Sun (combust)
+        if pid != const._SUN:
+            combust = pid in _combust_set
+            sun_conj = const._SUN in _conj_with(pid, {const._SUN})
+            if combust or sun_conj:
+                reason = "combust by Sun" if combust else "conjoined with Sun"
+                out.append(("Kruddha (angered)", [f"{name} is {reason} in {_house_name(hidx)}"],
+                            "Leads to rash, unwholesome choices; losses involving money and family; and vulnerability to eye issues."))
+        return out
+
+    def _lajjitadi_for(pid: int) -> list[tuple[str, list[str], str]]:
+        """Return [(avastha_name, evidence_lines, effects_para), ...] for Lajjitādi."""
+        out = []
+        name = _planet_name(pid)
+        sign = _planet_sign(pid)
+        hidx = _house_of(pid)
+        if sign is None or hidx is None:
+            return out
+        lord = _lord_of_sign(sign)
+        rel = _relation_to_lord(pid, sign)
+        KETU = getattr(const, "_KETU", -2)
+        RAHU = getattr(const, "_RAHU", -1)
+
+        # 1 Lajjita – in 5th with Sun/Mars/Saturn/Rahu/Ketu
+        mal_set = {const._SUN, const._MARS, const._SATURN, RAHU, KETU}
+        if hidx == 4:  # 5th house
+            offenders = _conj_with(pid, mal_set)
+            if offenders:
+                out.append(("Lajjita (abashed)",
+                            [f"{name} in 5th conjoined with: " + ", ".join(_planet_name(p) for p in sorted(offenders))],
+                            "Irreligious drift, poor judgement, quarrels and wandering; also strain or illness tied to children."))
+
+        # 2 Garvita – exaltation or moolatrikona
+        if sign == _EXALTS.get(pid) or sign == _MOOL.get(pid):
+            out.append(("Garvita (conceited)",
+                        [f"{name} is {'exalted' if sign == _EXALTS.get(pid) else 'in moolatrikona'} ({_sign_name(sign)})"],
+                        "Rise in rank and recognition, learning and wealth, new property and an upswing in business/comforts."))
+
+        # 3 Kshudhita – in enemy sign AND aspected/associated by an enemy (esp. Saturn)
+        enemies = {p for p in (const._SUN, const._MOON, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN)
+                   if p not in _FRIENDS.get(pid, set()) and p not in _NEUTRALS.get(pid, set()) and p != pid}
+        sat_hit = False
+        if _relation_to_lord(pid, sign) == "enemy":
+            enemy_conj = _conj_with(pid, enemies)
+            enemy_asp = {p for p in enemies if _aspects(p, hidx)}
+            if enemy_conj or enemy_asp:
+                if const._SATURN in (enemy_conj | enemy_asp):
+                    sat_hit = True
+                ev = [f"{name} in enemy's sign ({_planet_name(lord)})"]
+                if enemy_conj:
+                    ev.append("Conjoined with enemy: " + ", ".join(_planet_name(p) for p in sorted(enemy_conj)))
+                if enemy_asp:
+                    ev.append("Aspected by enemy: " + ", ".join(_planet_name(p) for p in sorted(enemy_asp)))
+                out.append(("Kshudhita (hungry)", ev,
+                            "Sorrow, mental agitation, trouble from opponents and money drain; reasoning feels off and energy flags"
+                            + ("—notably harsher with Saturn involved." if sat_hit else ".")))
+
+        # 4 Trishita – watery sign + malefic aspect + no benefic aspect
+        watery = {3, 7, 11}  # Cancer, Scorpio, Pisces
+        if sign in watery:
+            mal_asp = _any_aspect_from(NAT_MALEFICS, hidx)
+            ben_asp = _any_aspect_from(NAT_BENEFICS, hidx)
+            if mal_asp and not ben_asp:
+                out.append(("Trishita (thirsty)",
+                            [f"{name} in watery sign ({_sign_name(sign)})", "Aspected by malefic(s) and not by benefics"],
+                            "Susceptible to ailments via indulgence/relationships, a slide toward questionable acts, loss of wealth and humiliation."))
+
+        # 5 Mudita – friend’s sign AND friendly association/aspect AND Jupiter support
+        if rel in {"friend", "adhi-mitra"}:
+            friendly = set(_FRIENDS.get(pid, set()))
+            support = (_conj_with(pid, friendly) or _any_aspect_from(friendly, hidx)) and \
+                      (_aspects(const._JUPITER, hidx) or const._JUPITER in _conj_with(pid, {const._JUPITER}))
+            if support:
+                details = [f"{name} in friend’s sign ({_planet_name(lord)})",
+                           "Supported by friendly grahas",
+                           ("Jupiter aspects/conjoins the planet")]
+                out.append(("Mudita (delighted)",
+                            details,
+                            "Expect fine garments/ornaments, a roomy residence, pleasures and lands, victory over foes and progress in learning."))
+
+        # 6 Kshobhita – associated with Sun (combust) AND aspected by malefics/enemies
+        if pid != const._SUN:
+            combust = pid in _combust_set
+            sun_conj = const._SUN in _conj_with(pid, {const._SUN})
+            bad_asp = _any_aspect_from(NAT_MALEFICS, hidx) or _any_aspect_from(enemies, hidx)
+            if (combust or sun_conj) and bad_asp:
+                reason = "combust" if combust else "conjoined with Sun"
+                out.append(("Kshobhita (agitated)",
+                            [f"{name} is {reason}", "Also aspected by malefics/enemies"],
+                            "Penury, confused logic and repeated troubles; losses of wealth, foot ailments, and setbacks through official disfavour."))
+        return out
+
+    def _weak_note_for(pid: int) -> str:
+        # the four-fold weakness check already used elsewhere
+        v = _extract_shadbala_val(_get_shadbala_result() if ' _get_shadbala_result' in globals() else sb_res, pid)
+        sb_weak = (pid in SHAD_THRESH) and (v is not None) and (v < SHAD_THRESH[pid])
+        weak = (pid in avs.get("bala", set())) or (pid in avs.get("mrita", set())) or (pid in avs.get("sushupti", set())) or sb_weak
+        if weak:
+            return f"<p class='text-center mt-1'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {_planet_name(pid)} is weak</p>"
+        return ""
+
+    def _render_avastha_block() -> str:
+        planets = [const._SUN, const._MOON, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN]
+        parts = ["<div class='mt-4'><h3 class='h6 text-center'>Readings based on Deeptādi & Lajjitādi Avasthas</h3>"]
+        any_match = False
+        for pid in planets:
+            dp = _deeptadi_for(pid)
+            lj = _lajjitadi_for(pid)
+            if not dp and not lj:
+                continue
+            any_match = True
+            parts.append(f"<h4 class='h6 text-center mt-3'>{_planet_name(pid)}</h4>")
+            # group evidence + effects per avastha
+            for nm, ev, fx in (dp + lj):
+                parts.append(f"<p class='text-center mb-1'><em>{nm}</em></p>")
+                if ev:
+                    for e in ev:
+                        parts.append(f"<p class='text-center mb-1'>• {e}</p>")
+                parts.append(f"<p class='text-center mb-2'><strong>Predicted effects:</strong> {fx}</p>")
+            # mahadasha note (once per planet)
+            md = _md_period_for(pid)
+            if md:
+                s, e = md
+                parts.append(f"<p class='text-center mt-1'><strong>The above effects would be more prominent in the mahadasha of {_planet_name(pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>")
+            # weakness note (if any)
+            parts.append(_weak_note_for(pid))
+        if not any_match:
+            parts.append("<p class='text-center'>No Deeptādi/Lajjitādi avasthas matched the strict rules for visible planets.</p>")
+        parts.append("</div>")
+        return "".join(parts)
+
+    avasthas_html = _render_avastha_block()
 
     html_out = f"""
 <div class=\"container\"> 
@@ -5489,6 +5757,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {venus_aspects_html}
   {saturn_aspects_html}
   {yogas_html}
+  {avasthas_html}
 </div>
 """
     return html_out
