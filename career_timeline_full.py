@@ -3805,6 +3805,1426 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 rashi_ketu_html = rashi_ketu_html.replace("</div>",
                     "<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the Ketu is weak</p></div>"
                 )
+    
+        # ── Aspects on the Sun (conditioned by Sun's sign) ─────────────────────
+    # Uses classical aspects: all grahas cast 7th; Mars adds 4th & 8th; Jupiter 5th & 9th;
+    # Saturn 3rd & 10th. (Rahu/Ketu not used here.) Mercury/Venus cannot practically
+    # oppose the Sun in a rāśi chart, so they will rarely (effectively never) match.
+    def _house_of(pid: int) -> int | None:
+        hi = p2h.get(pid)
+        if hi is not None:
+            return hi
+        # fallback from sign when PyJHora didn't fill p2h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    def _does_aspect_from(planet_pid: int, target_house_idx: int) -> bool:
+        """Return True if planet casts an aspect on *target_house_idx* (0-based)."""
+        src = _house_of(planet_pid)
+        if src is None:
+            return False
+        delta = (target_house_idx - src) % 12
+        aspects = {
+            const._MOON:    {6},
+            const._MARS:    {3, 6, 7},   # 4th, 7th, 8th
+            const._MERCURY: {6},
+            const._JUPITER: {4, 6, 8},   # 5th, 7th, 9th
+            const._VENUS:   {6},
+            const._SATURN:  {2, 6, 9},   # 3rd, 7th, 10th
+        }
+        return delta in aspects.get(planet_pid, set())
+
+    # Sun's sign → group for the textual rules
+    try:
+        sun_sign = int(natal_pp[const._SUN + 1][1][0])
+    except Exception:
+        try:
+            sun_lon = float(natal_pp[const._SUN + 1][1][1]) % 360.0
+            sun_sign = int(sun_lon // 30)
+        except Exception:
+            sun_sign = 0
+
+    grp = None
+    grp_label = ""
+    if sun_sign in (0, 7):        # Aries, Scorpio
+        grp, grp_label = "mars",   "the signs of Mars (Aries/Scorpio)"
+    elif sun_sign in (1, 6):      # Taurus, Libra
+        grp, grp_label = "venus",  "the signs of Venus (Taurus/Libra)"
+    elif sun_sign in (2, 5):      # Gemini, Virgo
+        grp, grp_label = "mercury","the signs of Mercury (Gemini/Virgo)"
+    elif sun_sign == 3:           # Cancer
+        grp, grp_label = "moon",   "the sign of the Moon (Cancer)"
+    elif sun_sign == 4:           # Leo
+        grp, grp_label = "own",    "his own sign (Leo)"
+    elif sun_sign in (8, 11):     # Sagittarius, Pisces
+        grp, grp_label = "jupiter","the signs of Jupiter (Sagittarius/Pisces)"
+    elif sun_sign in (9, 10):     # Capricorn, Aquarius
+        grp, grp_label = "saturn", "the signs of Saturn (Capricorn/Aquarius)"
+    else:
+        grp, grp_label = "mars",   "the signs of Mars (Aries/Scorpio)"  # safe default
+
+    # Conversational rewording of the classical dicta (per group × aspecting graha)
+    P = {
+        "mars": {
+            const._MOON:    ["Charitable and soft-bodied yet attractive; has help/servants; drawn to sensual company."],
+            const._MARS:    ["Very strong; hard-edged, red-eyed intensity; keeps composure in conflict."],
+            const._MERCURY: ["Loses nerve and comforts; servile and weakened in resources and presence."],
+            const._JUPITER: ["Wealth rises; advisory/judicial stature; generous; respected within the family."],
+            const._VENUS:   ["Fixation on disreputable liaisons; opposed by many; few real friends; risk of skin issues and poverty."],
+            const._SATURN:  ["Courage sags; sickly; dull/ungainly appearance."],
+        },
+        "venus": {
+            const._MOON:    ["Multiple romantic ties; pulled toward courtesans; earnings link to water-related trades."],
+            const._MARS:    ["Composed under fire; strong and bold; gains through own toil."],
+            const._MERCURY: ["Talent for music/poetry/writing; pleasing looks."],
+            const._JUPITER: ["Many allies and adversaries; minister-grade stature; wealthy and content."],
+            const._VENUS:   ["Fine eyes; timid at heart; serves power; well-off."],
+            const._SATURN:  ["Slothful; ailing and poor; keeps the company of older women."],
+        },
+        "mercury": {
+            const._MOON:    ["Worn down by both friends and rivals; low spirits; hassles from foreign travel/residence."],
+            const._MARS:    ["Enemy-shy and quarrelsome; beaten in contests; humiliation possible."],
+            const._MERCURY: ["Regal bearing; famed; supported by friends; few enemies; watch the eyes."],
+            const._JUPITER: ["Very learned and mantra-savvy; sharp yet loses inner calm; frequent foreign movement."],
+            const._VENUS:   ["Comforted by spouse, children and wealth; good-looking and healthy."],
+            const._SATURN:  ["Easily agitated; unwise tricksiness; many servants but muddled judgment."],
+        },
+        "moon": {
+            const._MOON:    ["King-like confidence with a harsh edge; wealth via water-linked pursuits."],
+            const._MARS:    ["Inflammation and perianal troubles; few friends; progeny comfort suffers."],
+            const._MERCURY: ["Renown for learning and status; favoured by authorities; clever; largely free of foes."],
+            const._JUPITER: ["Envoy/diplomat vibe; high office; very famous and multi-talented."],
+            const._VENUS:   ["Income routes via women; does tangible good for others; brave and sweet-tongued."],
+            const._SATURN:  ["Kapha-Vaata ailments; covets others’ wealth; skewed judgment; back-biting tendencies."],
+        },
+        "own": {
+            const._MOON:    ["Shrewd and persuasive; liked by the powerful; Kapha-type issues may surface."],
+            const._MARS:    ["Gallant and quick-witted; many lovers; feared by rivals."],
+            const._MERCURY: ["Skilled writer; loves to travel; physical stamina can be middling."],
+            const._JUPITER: ["Builds temples/orchards/tanks; strong and wise; enjoys solitude."],
+            const._VENUS:   ["Harsh and shameless notes; friction with relatives; skin complaints possible."],
+            const._SATURN:  ["Harasses close ones; derails others’ work; risk of impotence."],
+        },
+        "jupiter": {
+            const._MOON:    ["Blessed with children, learning and fame; attractive; king-like contentment."],
+            const._MARS:    ["War renown; assertive clarity; wealth and comforts accrue."],
+            const._MERCURY: ["Poetic, multilingual, sweet-spoken; knows minerals/metals and the like."],
+            const._JUPITER: ["Learned and affluent; moves in royal company."],
+            const._VENUS:   ["Gets a virtuous, beautiful spouse; fine clothes and finery."],
+            const._SATURN:  ["Unkempt; serves the fallen; covets others’ food; tends cattle."],
+        },
+        "saturn": {
+            const._MOON:    ["Cunning and unsettled; loses wealth/comfort through women."],
+            const._MARS:    ["Dogged by illness and adversaries; physical injuries are likely."],
+            const._MERCURY: ["Bold yet eunuch-like nature; unclean habits; covets others’ assets."],
+            const._JUPITER: ["Wise and well-known; becomes a refuge for many."],
+            const._VENUS:   ["Livelihood via conch-shell-type trades; gains through women of ill repute."],
+            const._SATURN:  ["Crushes foes; trusted by rulers; content at heart."],
+        },
+    }
+
+    # Build per-graha sub-sections only if that graha actually aspects the Sun now
+    sun_house_idx = _house_of(const._SUN)
+    sub_sections = []
+    for asp_pid in (const._MOON, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN):
+        if not _does_aspect_from(asp_pid, sun_house_idx):
+            continue
+        lines = P.get(grp, {}).get(asp_pid, [])
+        if not lines:
+            continue
+
+        # Mahadasha window of the aspecting graha
+        md = _md_period_for(asp_pid)
+        md_html = ""
+        if md:
+            s, e = md
+            md_html = (
+                f"<p class='text-center mt-2'><strong>"
+                f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check (balāvasthā, mṛtāvasthā, suṣupti; and Śaḍbala below threshold)
+        sb_val_x = _extract_shadbala_val(sb_res, asp_pid)
+        is_weak = (
+            (asp_pid in avs["bala"]) or
+            (asp_pid in avs["mrita"]) or
+            (asp_pid in avs["sushupti"]) or
+            (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
+        )
+        weak_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
+        ) if is_weak else ""
+
+        block = (
+            f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects the Sun in {grp_label}:</em></p>"
+            + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines)
+            + md_html + weak_html
+        )
+        sub_sections.append(block)
+
+    sun_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on the Sun (by sign of the Sun)</h3>"
+        + "".join(sub_sections if sub_sections else [
+            "<p class='text-center mb-1'><em>No qualifying planetary aspects to the Sun found for the current rules.</em></p>"
+        ])
+        + "</div>"
+    )
+    
+        # ── Aspects on the Moon (conditioned by Moon's sign) ────────────────────
+    # Classical aspects used: everyone casts 7th; Mars adds 4th & 8th;
+    # Jupiter adds 5th & 9th; Saturn adds 3rd & 10th.
+    def _house_of_moon_helper(pid: int) -> int | None:
+        hi = p2h.get(pid)
+        if hi is not None:
+            return hi
+        # fallback from sign when PyJHora didn't fill p2h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    def _does_aspect_to_moon_from(planet_pid: int, target_house_idx: int) -> bool:
+        src = _house_of_moon_helper(planet_pid)
+        if src is None:
+            return False
+        delta = (target_house_idx - src) % 12
+        aspects = {
+            const._SUN:     {6},          # 7th
+            const._MOON:    {6},          # rarely useful (Moon→Moon), will be skipped below
+            const._MARS:    {3, 6, 7},    # 4th, 7th, 8th
+            const._MERCURY: {6},          # 7th
+            const._JUPITER: {4, 6, 8},    # 5th, 7th, 9th
+            const._VENUS:   {6},          # 7th
+            const._SATURN:  {2, 6, 9},    # 3rd, 7th, 10th
+        }
+        return delta in aspects.get(planet_pid, set())
+
+    # Moon sign index (0=Aries … 11=Pisces)
+    try:
+        moon_sign = int(natal_pp[const._MOON + 1][1][0])
+    except Exception:
+        try:
+            moon_lon = float(natal_pp[const._MOON + 1][1][1]) % 360.0
+            moon_sign = int(moon_lon // 30)
+        except Exception:
+            moon_sign = 0
+
+    # Conversational re-wordings of the rules you supplied.
+    # Key = sign index 0..11, value = {aspecting_pid: [bullet strings]}
+    P_MOON = {
+        0: {  # Mesha / Aries
+            const._SUN:     ["Quick temper; poverty pressures; begging-like dependence can appear."],
+            const._MARS:    ["Dental and eye troubles; risk of injuries; status can rise despite urinary issues."],
+            const._MERCURY: ["Educated, articulate and known for speech/poetry—reputation follows."],
+            const._JUPITER: ["King-like stature; wealth accrues."],
+            const._VENUS:   ["Very agreeable, virtuous, persuasive speaker."],
+            const._SATURN:  ["Sickliness; untruthful tendencies; theft/underhanded acts."],
+        },
+        1: {  # Vrisha / Taurus
+            const._SUN:     ["Work tied to land/agriculture; hard labor; servile roles."],
+            const._MARS:    ["Over-indulgent sexually; popular with women; good company but loss of property."],
+            const._MERCURY: ["Learned, eloquent, highly skilled."],
+            const._JUPITER: ["Virtuous, famous, admirable; good spouse and children."],
+            const._VENUS:   ["Many comforts; king-level ease."],
+            const._SATURN:  ["Wealth comes, yet nature turns harsh; strain on mother’s wellbeing."],
+        },
+        2: {  # Mithuna / Gemini
+            const._SUN:     ["Clever and attractive yet poor; hardships persist."],
+            const._MARS:    ["Very brave, learned; in arms trade; some bodily defect possible."],
+            const._MERCURY: ["King’s confidant; defeats rivals."],
+            const._JUPITER: ["Discerning teacher-type; learned."],
+            const._VENUS:   ["Fearless, beautiful spouse; vehicles and ornaments."],
+            const._SATURN:  ["Losses of wealth/spouse/vehicle/children; menial weaving-type work."],
+        },
+        3: {  # Karka / Cancer
+            const._SUN:     ["Eye disease; custodian duties (fort/estate); poverty strain."],
+            const._MARS:    ["Bold with status, but body weak."],
+            const._MERCURY: ["Learned poet; advisory/ministerial role."],
+            const._JUPITER: ["Learned, famed and valiant—ruler archetype."],
+            const._VENUS:   ["Gems/ornaments; attractive; but liaisons with ill-repute women risk."],
+            const._SATURN:  ["Wandering; hostility toward mother; trades in iron/arms."],
+        },
+        4: {  # Simha / Leo
+            const._SUN:     ["Fine qualities, brave, near-royal standing; children delayed/denied."],
+            const._MARS:    ["Regal authority; commands forces; sharp temper."],
+            const._MERCURY: ["Devoted to spouse; learned; astrologer-leaning."],
+            const._JUPITER: ["Wealthy, virtuous and famous."],
+            const._VENUS:   ["Scholarship with frailty; devoted to spouse; royal ease."],
+            const._SATURN:  ["Agriculture focus; loss of wealth/home comforts; sin-leaning; barber-type work."],
+        },
+        5: {  # Kanya / Virgo
+            const._SUN:     ["Serves women; enjoys varied comforts."],
+            const._MARS:    ["Sculptor/fabricator; fame, wealth; battle-ready."],
+            const._MERCURY: ["Poet/astrologer; debate winner; king-like recognition."],
+            const._JUPITER: ["Favoured by rulers; military leadership; keeps promises."],
+            const._VENUS:   ["Many spouses; wealthy; learned and multi-talented."],
+            const._SATURN:  ["Loss of wealth and wisdom; dependent on women; weak memory."],
+        },
+        6: {  # Tula / Libra
+            const._SUN:     ["Wandering, sickness, poverty, humiliation; comforts lacking."],
+            const._MARS:    ["Harsh temper; adultery risk; violent; eye disease."],
+            const._MERCURY: ["Multi-talented; very wealthy; learned; eloquent."],
+            const._JUPITER: ["Highly respected; trades in gold/precious stones."],
+            const._VENUS:   ["Healthy, attractive, wealthy; learned; success in trade."],
+            const._SATURN:  ["Harsh nature; wealthy but indulgent in sensuality."],
+        },
+        7: {  # Vrischika / Scorpio
+            const._SUN:     ["Learned yet wandering; deprived of wealth/comforts; disliked socially."],
+            const._MARS:    ["Famed; war-victor; royal bearing; voracious eater."],
+            const._MERCURY: ["Abrasive speech; twins fathered; capable in craft."],
+            const._JUPITER: ["Norm-abiding; pleasing appearance."],
+            const._VENUS:   ["Wealthy and pleasant; spots others’ weaknesses; washerman-type associations."],
+            const._SATURN:  ["Sickly; bodily defect; avaricious."],
+        },
+        8: {  # Dhanu / Sagittarius
+            const._SUN:     ["Wealthy, famous, king-like."],
+            const._MARS:    ["Army leader; wealthy, valorous, renowned."],
+            const._MERCURY: ["Sculptor/astrologer; protector of kin."],
+            const._JUPITER: ["Handsome, devout; ministerial high status; wealthy."],
+            const._VENUS:   ["Good-looking; many comforts; loyal friends and spouse; gives refuge."],
+            const._SATURN:  ["Fine speaker; strong; philosophical bent; proud; courtesan-attachments."],
+        },
+        9: {  # Makara / Capricorn
+            const._SUN:     ["Poor wanderer with plain looks; helpful to others nonetheless."],
+            const._MARS:    ["Famed, king-comparable; wealthy and fortunate."],
+            const._MERCURY: ["King-like status; estranged from spouse/children."],
+            const._JUPITER: ["Very valorous; ruler-type; many wives, children, friends."],
+            const._VENUS:   ["Learned; enjoys others’ wealth and women."],
+            const._SATURN:  ["Indolent and plain; rich; attraction to others’ spouses."],
+        },
+        10: {  # Kumbha / Aquarius
+            const._SUN:     ["Unpleasant looks; immoral tones; farming focus."],
+            const._MARS:    ["Honest but lazy; servile; harsh character."],
+            const._MERCURY: ["Comforts flow; fine speaker; king-like favour."],
+            const._JUPITER: ["Royal equivalence; status and possessions abound."],
+            const._VENUS:   ["Attracted to others’ wives; little sensual comfort; sinful cowardice risk."],
+            const._SATURN:  ["Drawn to others’ wives; irreligious—benefic aspects can flip to fame/prosperity."],
+        },
+        11: {  # Meena / Pisces
+            const._SUN:     ["Highly sensuous, wealthy, leads forces; sin-leaning."],
+            const._MARS:    ["Harsh deeds; humiliation; lacks comforts."],
+            const._MERCURY: ["Very witty; wealthy and famed; consorts with others’ wives."],
+            const._JUPITER: ["Attractive, very wealthy; many women; king-level."],
+            const._VENUS:   ["Learned and pleasant; immersed in music/dance/singing."],
+            const._SATURN:  ["Tormented by lust; drawn to low/ugly women; sinful track."],
+        },
+    }
+
+    moon_house_idx = _house_of_moon_helper(const._MOON)
+    sub_sections_moon = []
+    # We exclude Moon→Moon self-aspect text; build only for Sun, Mars, Mercury, Jupiter, Venus, Saturn
+    for asp_pid in (const._SUN, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN):
+        if not _does_aspect_to_moon_from(asp_pid, moon_house_idx):
+            continue
+        lines = P_MOON.get(moon_sign, {}).get(asp_pid, [])
+        if not lines:
+            continue
+
+        # Mahadasha window of the aspecting graha
+        md = _md_period_for(asp_pid)
+        md_html = ""
+        if md:
+            s, e = md
+            md_html = (
+                f"<p class='text-center mt-2'><strong>"
+                f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check for the aspecting graha
+        sb_val_x = _extract_shadbala_val(sb_res, asp_pid)
+        is_weak = (
+            (asp_pid in avs['bala']) or
+            (asp_pid in avs['mrita']) or
+            (asp_pid in avs['sushupti']) or
+            (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
+        )
+        weak_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
+        ) if is_weak else ""
+
+        block = (
+            f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects the Moon in "
+            f"{SIGN_NAMES[moon_sign]}:</em></p>"
+            + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines)
+            + md_html + weak_html
+        )
+        sub_sections_moon.append(block)
+
+    moon_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on the Moon (by sign of the Moon)</h3>"
+        + "".join(sub_sections_moon if sub_sections_moon else [
+            "<p class='text-center mb-1'><em>No qualifying planetary aspects to the Moon found for the current rules.</em></p>"
+        ])
+        + "</div>"
+    )
+
+    # ← Also remember to include `moon_aspects_html` in your final HTML aggregation
+    # e.g., sections.append(moon_aspects_html) or concatenation with your other blocks.
+    
+        # ── Aspects on Mars (conditioned by Mars' sign) ─────────────────────────
+    # Classical aspects used: everyone casts 7th; Mars adds 4th & 8th;
+    # Jupiter adds 5th & 9th; Saturn adds 3rd & 10th.
+    def _house_of_planet(pid: int) -> int | None:
+        hi = p2h.get(pid)
+        if hi is not None:
+            return hi
+        # fallback from sign when PyJHora didn't fill p2h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    def _does_aspect_to_mars_from(planet_pid: int, target_house_idx: int) -> bool:
+        src = _house_of_planet(planet_pid)
+        if src is None:
+            return False
+        delta = (target_house_idx - src) % 12
+        aspects = {
+            const._SUN:     {6},          # 7th
+            const._MOON:    {6},          # 7th
+            const._MARS:    {3, 6, 7},    # 4th, 7th, 8th
+            const._MERCURY: {6},          # 7th
+            const._JUPITER: {4, 6, 8},    # 5th, 7th, 9th
+            const._VENUS:   {6},          # 7th
+            const._SATURN:  {2, 6, 9},    # 3rd, 7th, 10th
+        }
+        return delta in aspects.get(planet_pid, set())
+
+    # Mars sign & house
+    try:
+        mars_sign = int(natal_pp[const._MARS + 1][1][0])
+    except Exception:
+        try:
+            mars_lon = float(natal_pp[const._MARS + 1][1][1]) % 360.0
+            mars_sign = int(mars_lon // 30)
+        except Exception:
+            mars_sign = 0
+    mars_house_idx = _house_of_planet(const._MARS)
+
+    # Map Mars' sign to its "host group" per your rules
+    # own: Aries, Scorpio; Venus: Taurus, Libra; Mercury: Gemini, Virgo;
+    # Moon: Cancer; Sun: Leo; Jupiter: Sagittarius, Pisces; Saturn: Capricorn, Aquarius
+    if mars_sign in (0, 7):
+        m_group = "own"
+    elif mars_sign in (1, 6):
+        m_group = "venus"
+    elif mars_sign in (2, 5):
+        m_group = "mercury"
+    elif mars_sign == 3:
+        m_group = "moon"
+    elif mars_sign == 4:
+        m_group = "sun"
+    elif mars_sign in (8, 11):
+        m_group = "jupiter"
+    elif mars_sign in (9, 10):
+        m_group = "saturn"
+    else:
+        m_group = "own"
+
+    # Conversational re-wordings of your text, grouped by Mars-sign host and aspecting planet
+    P_MARS = {
+        "own": {  # Mars in Aries/Scorpio
+            const._SUN:    ["Ministerial/judicial streak; persuasive speaker; money, spouse and sons indicated."],
+            const._MOON:   ["Brave; attraction to others’ partners; injury risks; strain with mother."],
+            const._MERCURY:["Sensual; drawn to women of easy morals; covets others’ wealth."],
+            const._JUPITER:["Learned, sweet-tongued, devoted to father; wealth accrues."],
+            const._VENUS:  ["Voracious appetite; suffers due to women."],
+            const._SATURN: ["Attracted to others’ wives; shunned by own kin; weak constitution."],
+        },
+        "venus": {  # Mars in Taurus/Libra
+            const._SUN:    ["Wanders in forests/hills; quick to anger; antipathy toward women."],
+            const._MOON:   ["Opposed to mother; timid; drawn to multiple women."],
+            const._MERCURY:["Learned, talkative, quarrelsome; pleasant looks."],
+            const._JUPITER:["Fortunate; drawn to music and dance."],
+            const._VENUS:  ["Worthy of praise; minister/commander potential; many comforts."],
+            const._SATURN: ["Famous, amiable, wealthy and learned."],
+        },
+        "mercury": {  # Mars in Gemini/Virgo
+            const._SUN:    ["Learned, wealthy and valorous; life around forts/forests/mountains."],
+            const._MOON:   ["Leads women; agreeable, wise, wealthy; takes on royal/security roles."],
+            const._MERCURY:["Talks a lot; loves poetry; maths talent; charming fibs."],
+            const._JUPITER:["Envoy/sovereign vibes; highly skilful; leads men; may quit homeland."],
+            const._VENUS:  ["Wealth; fine food and attire; devoted to spouse."],
+            const._SATURN: ["Turns to agriculture; lazy yet brave; rough looks."],
+        },
+        "moon": {  # Mars in Cancer
+            const._SUN:    ["Pitta aggravation; judge-like; dispenses punishment."],
+            const._MOON:   ["Sickly; low character; plain looks."],
+            const._MERCURY:["Unattractive, shameless; sinful; friendless."],
+            const._JUPITER:["Fame, learning and high office."],
+            const._VENUS:  ["Tormented through women; humiliation; loses money in unworthy pursuits."],
+            const._SATURN: ["Sea-trade/maritime earnings; good looks; near-royal standing."],
+        },
+        "sun": {  # Mars in Leo
+            const._SUN:    ["Woods/mountains wanderer; forceful; protects his own."],
+            const._MOON:   ["Hardy body; harsh heart; stress around mother; skilful and bright."],
+            const._MERCURY:["Sculptor/painter; poet; greedy yet exceptionally clever."],
+            const._JUPITER:["Army leadership; royal favour; learned; fulfils others’ wishes."],
+            const._VENUS:  ["Attractive; many liaisons; famous and youthful."],
+            const._SATURN: ["Prematurely aged look; poverty worries; lives in others’ homes."],
+        },
+        "jupiter": {  # Mars in Sagittarius/Pisces
+            const._SUN:    ["Adored by people; dwells in wild/fortified places; harsh edge."],
+            const._MOON:   ["Quarrelsome scholar; opposes authority."],
+            const._MERCURY:["Very clever; learned; sculptor; agreeable."],
+            const._JUPITER:["Leaves homeland; without wife/comforts; perpetually battling foes."],
+            const._VENUS:  ["Addicted to women; many comforts."],
+            const._SATURN: ["Servile, ever wandering; poor looks; sinful tendencies."],
+        },
+        "saturn": {  # Mars in Capricorn/Aquarius
+            const._SUN:    ["Aggressive and brave; wealth, spouse and progeny promised."],
+            const._MOON:   ["Strained with mother; fickle friendships; displacement from residence."],
+            const._MERCURY:["Very sweet-tongued yet poor/weak; deceitful and irreligious."],
+            const._JUPITER:["Long-lived, handsome; enjoys royal favour; blessed with brothers."],
+            const._VENUS:  ["Quarrelsome; hen-pecked; still enjoys abundant comforts."],
+            const._SATURN: ["Very wealthy; aversion to women; many children; learned; king-like and battle-valorous."],
+        },
+    }
+
+    sub_sections_mars = []
+    for asp_pid in (const._SUN, const._MOON, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN):
+        if not _does_aspect_to_mars_from(asp_pid, mars_house_idx):
+            continue
+        lines = P_MARS.get(m_group, {}).get(asp_pid, [])
+        if not lines:
+            continue
+
+        # Mahadasha window of the *aspecting* planet
+        md = _md_period_for(asp_pid)
+        md_html = ""
+        if md:
+            s, e = md
+            md_html = (
+                f"<p class='text-center mt-2'><strong>"
+                f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check for the *aspecting* planet
+        sb_val_x = _extract_shadbala_val(sb_res, asp_pid)
+        is_weak = (
+            (asp_pid in avs['bala']) or
+            (asp_pid in avs['mrita']) or
+            (asp_pid in avs['sushupti']) or
+            (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
+        )
+        weak_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
+        ) if is_weak else ""
+
+        block = (
+            f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects Mars in "
+            f"{SIGN_NAMES[mars_sign]}:</em></p>"
+            + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines)
+            + md_html + weak_html
+        )
+        sub_sections_mars.append(block)
+
+    mars_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on Mars (by sign of Mars)</h3>"
+        + "".join(sub_sections_mars if sub_sections_mars else [
+            "<p class='text-center mb-1'><em>No qualifying planetary aspects to Mars found for the current rules.</em></p>"
+        ])
+        + "</div>"
+    )
+
+    # ← Remember to include `mars_aspects_html` in your final HTML aggregation:
+    # e.g., sections.append(mars_aspects_html)  or  final_html = final_html + mars_aspects_html
+    
+        # ── Aspects on Mercury in Different Signs (only when the aspect actually exists) ──
+    # Helpers consistent with the Sun/Moon/Mars aspect sections
+    def _house_of(pid: int) -> int:
+        h = p2h.get(pid)
+        if h is not None:
+            return h
+        # fallback from sign
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    # classical aspects (offsets from the aspector’s house, 0-based)
+    ASPECTS = {
+        const._SUN: {6}, const._MOON: {6}, const._MERCURY: {6}, const._VENUS: {6},
+        const._MARS: {3, 6, 8}, const._JUPITER: {4, 6, 8}, const._SATURN: {2, 6, 9},
+    }
+    def _does_aspect(from_pid: int, target_house_idx: int) -> bool:
+        src = _house_of(from_pid)
+        delta = (target_house_idx - src) % 12
+        return delta in ASPECTS.get(from_pid, {6})
+
+    # Locate Mercury’s sign & house and identify the hosting-sign family
+    merc_sign = _planet_sign(const._MERCURY)
+    merc_house_idx = _house_of(const._MERCURY)
+    # sign families
+    _host = (
+        "mars"    if merc_sign in (0, 7) else           # Aries, Scorpio
+        "venus"   if merc_sign in (1, 6) else           # Taurus, Libra
+        "own"     if merc_sign in (2, 5) else           # Gemini, Virgo
+        "moon"    if merc_sign == 3 else                # Cancer
+        "sun"     if merc_sign == 4 else                # Leo
+        "jupiter" if merc_sign in (8, 11) else          # Sagittarius, Pisces
+        "saturn"                                  # Capricorn, Aquarius
+    )
+
+    host_label = {
+        "mars":    "a sign of Mars (Aries/Scorpio)",
+        "venus":   "a sign of Venus (Taurus/Libra)",
+        "own":     "its own sign (Gemini/Virgo)",
+        "moon":    "the Moon’s sign (Cancer)",
+        "sun":     "the Sun’s sign (Leo)",
+        "jupiter": "a sign of Jupiter (Sagittarius/Pisces)",
+        "saturn":  "a sign of Saturn (Capricorn/Aquarius)",
+    }[_host]
+
+    # Text payloads (paraphrased faithfully, not sugar-coated)
+    P_MERCURY = {
+        "mars": {  # Mercury in Aries/Scorpio
+            const._SUN: [
+                "Straight-speaking; bonds well with brothers; enjoys tangible comforts."
+            ],
+            const._MOON: [
+                "Drawn to dance/music and sensuality; fond of women; morally wayward tendencies possible; access to staff and vehicles."
+            ],
+            const._MARS: [
+                "Prone to falsehood and quarrels; still articulate, learned and very wealthy; may suffer from excessive thirst."
+            ],
+            const._JUPITER: [
+                "Wealth and contentment; pleasing, soft disposition."
+            ],
+            const._VENUS: [
+                "Suave and persuasive; courteous; trusted by others—especially women."
+            ],
+            const._SATURN: [
+                "Harsh streak; courage with suffering—aggressive yet miserable."
+            ],
+        },
+        "venus": {  # Mercury in Taurus/Libra
+            const._SUN: [
+                "Health is fragile; humiliations and servility; resources feel tight."
+            ],
+            const._MOON: [
+                "Wealth and reputation; reliable; healthy; may serve the establishment."
+            ],
+            const._MARS: [
+                "Knocks from rivals and illness; humbled by authority; pleasures dry up."
+            ],
+            const._JUPITER: [
+                "Learned and trusted; a known face in the community; leadership potential."
+            ],
+            const._VENUS: [
+                "Fortunate; fine clothes/ornaments; youthful attraction—young women are drawn to you."
+            ],
+            const._SATURN: [
+                "Comforts get stripped; strained by spouse/children or friends."
+            ],
+        },
+        "own": {  # Mercury in Gemini/Virgo
+            const._SUN: [
+                "Truth-inclined; pleasant appearance; favoured by authority."
+            ],
+            const._MOON: [
+                "Scripture-loving and silver-tongued yet a relentless talker; quarrelsome edge."
+            ],
+            const._MARS: [
+                "Well-liked and serviceable to power, but prone to back-biting."
+            ],
+            const._JUPITER: [
+                "High governmental profile; brave; wealthy; presentable."
+            ],
+            const._VENUS: [
+                "Scholar’s polish; works for the ruler; steadfast in friendships; entanglements with wayward women."
+            ],
+            const._SATURN: [
+                "Kind-hearted finisher—sees work through; gains wealth."
+            ],
+        },
+        "moon": {  # Mercury in Cancer
+            const._SUN: [
+                "Hands-on trader/craftsman vibe—garlands, building, polishing—as livelihood."
+            ],
+            const._MOON: [
+                "Physical drains through women; weak constitution; comforts scarce."
+            ],
+            const._MARS: [
+                "Education stays limited; talks a lot; good-looking; tells agreeable lies; thievish streak."
+            ],
+            const._JUPITER: [
+                "Wise and humane; fortunate; learned; appreciated by the state."
+            ],
+            const._VENUS: [
+                "Attractive like Kāma; sweet-tongued; tuned to dance and music."
+            ],
+            const._SATURN: [
+                "Deceitful and ungrateful patterns; risk of imprisonment."
+            ],
+        },
+        "sun": {  # Mercury in Leo
+            const._SUN: [
+                "Jealous, servile, harsh and fickle; shameless when pressed."
+            ],
+            const._MOON: [
+                "Well-put-together and capable; loves poetry, dance and music; wealthy and well dressed."
+            ],
+            const._MARS: [
+                "Harmful choices; unwise; bodily injuries likely."
+            ],
+            const._JUPITER: [
+                "Tender constitution but razor-sharp intellect; impressive speaker; high rank."
+            ],
+            const._VENUS: [
+                "Good looks with pleasure-seeking; wealthy."
+            ],
+            const._SATURN: [
+                "Tall frame; afflicted; foul body odour—socially off-putting."
+            ],
+        },
+        "jupiter": {  # Mercury in Sagittarius/Pisces
+            const._SUN: [
+                "Brave and cool-tempered; liable to kidney/stone/diabetes-type issues."
+            ],
+            const._MOON: [
+                "Writerly; pleasant presence; well-liked; buoyed by friends."
+            ],
+            const._MARS: [
+                "Writer’s skill with an underworld tint—‘leader among thieves’ archetype."
+            ],
+            const._JUPITER: [
+                "Very learned; superb memory; pious; handsome; high station; treasurer-type trust."
+            ],
+            const._VENUS: [
+                "Ministerial flair; youthful; brave; prone to theft."
+            ],
+            const._SATURN: [
+                "Lives in forts/forests; voracious appetite; wicked and incompetent."
+            ],
+        },
+        "saturn": {  # Mercury in Capricorn/Aquarius
+            const._SUN: [
+                "Big family; rough nature; grapples/wrestles well; voracious appetite; notoriety."
+            ],
+            const._MOON: [
+                "Earnings tied to liquids/water trades; liquor commerce; cowardice."
+            ],
+            const._MARS: [
+                "Low activity; shy but decent-natured; still accrues wealth."
+            ],
+            const._JUPITER: [
+                "Very wealthy; prominent; leads within town or village."
+            ],
+            const._VENUS: [
+                "Many children; looks lacking; highly sensual; wedded to a wayward spouse."
+            ],
+            const._SATURN: [
+                "Sinner’s arc—poor, servile, miserable and destitute."
+            ],
+        },
+    }
+
+    # Build sub-sections only for planets that truly aspect Mercury now
+    sub_sections_mercury = []
+    for aspector_pid, lines in P_MERCURY[_host].items():
+        if not _does_aspect(aspector_pid, merc_house_idx):
+            continue
+
+        title = f"{PLANET_NAMES.get(aspector_pid)} aspecting Mercury in {SIGN_NAMES[merc_sign]}:"
+        block = [f"<p class='text-center mb-1'><strong>{title}</strong></p>"]
+        block += [f"<p class='text-center mb-1'>• {t}</p>" for t in lines]
+
+        # per-aspecting-graha MD window
+        mdx = _md_period_for(aspector_pid)
+        if mdx:
+            s, e = mdx
+            block.append(
+                f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # per-aspecting-graha weakness note (any of the four conditions)
+        sbv = _extract_shadbala_val(sb_res, aspector_pid)
+        sb_is_weak = (aspector_pid in SHAD_THRESH and sbv is not None and sbv < SHAD_THRESH[aspector_pid])
+        is_weak_aspector = (
+            aspector_pid in avs["bala"] or
+            aspector_pid in avs["mrita"] or
+            aspector_pid in avs["sushupti"] or
+            sb_is_weak
+        )
+        if is_weak_aspector:
+            block.append(
+                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
+            )
+
+        sub_sections_mercury.append("".join(block))
+
+    if not sub_sections_mercury:
+        sub_sections_mercury.append("<p class='text-center mb-1'>No classical aspect on Mercury is exact by canonical aspects right now.</p>")
+
+    mercury_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on Mercury (by sign of Mercury)</h3>"
+        f"<p class='text-center mb-1'><em>Mercury is in {host_label}.</em></p>"
+        + "".join(sub_sections_mercury)
+        + "</div>"
+    )
+    
+        # ── Aspects on Jupiter in Different Signs (only when an aspect truly exists) ──
+    # Reuse/define local helpers (same pattern you used for Sun/Moon/Mars/Mercury)
+    def _house_of(pid: int) -> int:
+        h = p2h.get(pid)
+        if h is not None:
+            return h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    ASPECTS = {
+        const._SUN: {6}, const._MOON: {6}, const._MERCURY: {6}, const._VENUS: {6},
+        const._MARS: {3, 6, 8}, const._JUPITER: {4, 6, 8}, const._SATURN: {2, 6, 9},
+    }
+    def _does_aspect(from_pid: int, target_house_idx: int) -> bool:
+        src = _house_of(from_pid)
+        delta = (target_house_idx - src) % 12
+        return delta in ASPECTS.get(from_pid, {6})
+
+    # Jupiter’s sign & house
+    jup_sign = _planet_sign(const._JUPITER)
+    jup_house_idx = _house_of(const._JUPITER)
+
+    # Host family for Jupiter’s current sign
+    _host = (
+        "mars"    if jup_sign in (0, 7) else           # Aries, Scorpio
+        "venus"   if jup_sign in (1, 6) else           # Taurus, Libra
+        "mercury" if jup_sign in (2, 5) else           # Gemini, Virgo
+        "moon"    if jup_sign == 3 else                # Cancer
+        "sun"     if jup_sign == 4 else                # Leo
+        "own"     if jup_sign in (8, 11) else          # Sagittarius, Pisces
+        "saturn"                                      # Capricorn, Aquarius
+    )
+    host_label = {
+        "mars":    "a sign of Mars (Aries/Scorpio)",
+        "venus":   "a sign of Venus (Taurus/Libra)",
+        "mercury": "a sign of Mercury (Gemini/Virgo)",
+        "moon":    "the Moon’s sign (Cancer)",
+        "sun":     "the Sun’s sign (Leo)",
+        "own":     "its own sign (Sagittarius/Pisces)",
+        "saturn":  "a sign of Saturn (Capricorn/Aquarius)",
+    }[_host]
+
+    # Text payloads for each host-family (faithful paraphrases)
+    P_JUPITER = {
+        "mars": {  # Jupiter in Aries/Scorpio
+            const._SUN: [
+                "Deeply pious and truthful; famous; tends to have a hairy body."
+            ],
+            const._MOON: [
+                "Soft-spoken and liked by spouse; religiously inclined; scholarly."
+            ],
+            const._MARS: [
+                "Brave and forceful; crushes opponents’ pride; commands groups."
+            ],
+            const._MERCURY: [
+                "Cheating tendencies; nitpicks others’ faults; outwardly polite; lies."
+            ],
+            const._VENUS: [
+                "Cowardly streak; enjoys finery, women and sensual pleasures."
+            ],
+            const._SATURN: [
+                "Unattractive; greedy; friendships are unstable."
+            ],
+        },
+        "venus": {  # Jupiter in Taurus/Libra
+            const._SUN: [
+                "A wandering, learned type; serves authority; gains vehicles/cattle."
+            ],
+            const._MOON: [
+                "Very wealthy; attractive; adored by women; indulgent."
+            ],
+            const._MARS: [
+                "Favoured by rulers; liked by women/children; learned and wealthy."
+            ],
+            const._MERCURY: [
+                "Learned, clever, likeable; virtuous and good-looking."
+            ],
+            const._VENUS: [
+                "Wealthy and famous; clean habits; enjoys comforts."
+            ],
+            const._SATURN: [
+                "Scholarly and wealthy; leads a town/village; unclean; shunned by women."
+            ],
+        },
+        "mercury": {  # Jupiter in Gemini/Virgo
+            const._SUN: [
+                "Heads a village/town; large family; widely known."
+            ],
+            const._MOON: [
+                "Virtuous, very famous and wealthy; favoured by mother; excellent qualities."
+            ],
+            const._MARS: [
+                "Constant sensuality; victorious; wealthy and admirable; bears injury scars."
+            ],
+            const._MERCURY: [
+                "Astrologer/savant craft; sculptor; articulate; blessed with spouse and children."
+            ],
+            const._VENUS: [
+                "Wealth, spouse, progeny, lands and houses; yet addicted to wayward women."
+            ],
+            const._SATURN: [
+                "Leads town/city; good looks; honoured by authority."
+            ],
+        },
+        "moon": {  # Jupiter in Cancer
+            const._SUN: [
+                "Loss of wife’s wealth/children, then recovery of all; commands men."
+            ],
+            const._MOON: [
+                "Controls treasury; wealthy; high status; many comforts."
+            ],
+            const._MARS: [
+                "Marries a young girl; wealthy; scholarly; bears injury marks."
+            ],
+            const._MERCURY: [
+                "Supports brothers; wealthy; quarrelsome yet trustworthy."
+            ],
+            const._VENUS: [
+                "Many wives; highly famous; fortunate."
+            ],
+            const._SATURN: [
+                "Leads village/town/army; very talkative; sensual comforts in old age."
+            ],
+        },
+        "sun": {  # Jupiter in Leo
+            const._SUN: [
+                "Overspends; famous; kind-hearted; kingly bearing."
+            ],
+            const._MOON: [
+                "Exceptionally fortunate; wealth through wife’s help."
+            ],
+            const._MARS: [
+                "Loyal to preceptors/friends; does hard tasks; pious but harsh; a leader."
+            ],
+            const._MERCURY: [
+                "Builder/scientific bent; strong oratory; ministerial and scholarly."
+            ],
+            const._VENUS: [
+                "Fond of women; status via the ruler; robust."
+            ],
+            const._SATURN: [
+                "Talks too much; comforts lacking; defeated in battle; status falls."
+            ],
+        },
+        "own": {  # Jupiter in Sagittarius/Pisces
+            const._SUN: [
+                "Clashes with authority; shunned by friends/relatives."
+            ],
+            const._MOON: [
+                "Many comforts; desired by women; pride from wealth/status."
+            ],
+            const._MARS: [
+                "Wounded in battle; harsh and harmful; still helpful to others."
+            ],
+            const._MERCURY: [
+                "Minister/king archetype; pleases all; wealth, sons and good fortune."
+            ],
+            const._VENUS: [
+                "Wealthy, content, famous, learned and long-lived."
+            ],
+            const._SATURN: [
+                "Unclean habits; cowardice; loss of standing."
+            ],
+        },
+        "saturn": {  # Jupiter in Capricorn/Aquarius
+            const._SUN: [
+                "Learned and kingly; attractive; brave; numerous comforts."
+            ],
+            const._MOON: [
+                "Keen mind; religious; proud yet respectful to parents; wealthy and learned."
+            ],
+            const._MARS: [
+                "Brave; fights for the ruler; arrogant; courageous; honoured."
+            ],
+            const._MERCURY: [
+                "Easily yields to women; group leader; rich; religious; driver/vehicle role; many friends."
+            ],
+            const._VENUS: [
+                "Women are drawn; abundant pleasures and possessions."
+            ],
+            const._SATURN: [
+                "High moral fibre; learned; famous; king-like; fond of comforts."
+            ],
+        },
+    }
+
+    # Build html for only those planets actually aspecting Jupiter now
+    sub_sections_jupiter = []
+    for aspector_pid, lines in P_JUPITER[_host].items():
+        if not _does_aspect(aspector_pid, jup_house_idx):
+            continue
+
+        title = f"{PLANET_NAMES.get(aspector_pid)} aspecting Jupiter in {SIGN_NAMES[jup_sign]}:"
+        block = [f"<p class='text-center mb-1'><strong>{title}</strong></p>"]
+        block += [f"<p class='text-center mb-1'>• {t}</p>" for t in lines]
+
+        # Mahadasha window for the aspecting graha
+        mdx = _md_period_for(aspector_pid)
+        if mdx:
+            s, e = mdx
+            block.append(
+                f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check for the aspecting graha (avasthas + shadbala)
+        sbv = _extract_shadbala_val(sb_res, aspector_pid)
+        sb_is_weak = (aspector_pid in SHAD_THRESH and sbv is not None and sbv < SHAD_THRESH[aspector_pid])
+        is_weak_aspector = (
+            aspector_pid in avs["bala"] or
+            aspector_pid in avs["mrita"] or
+            aspector_pid in avs["sushupti"] or
+            sb_is_weak
+        )
+        if is_weak_aspector:
+            block.append(
+                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
+            )
+
+        sub_sections_jupiter.append(''.join(block))
+
+    if not sub_sections_jupiter:
+        sub_sections_jupiter.append("<p class='text-center mb-1'>No canonical aspect on Jupiter is present right now.</p>")
+
+    jupiter_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on Jupiter (by sign of Jupiter)</h3>"
+        f"<p class='text-center mb-1'><em>Jupiter is in {host_label}.</em></p>"
+        + "".join(sub_sections_jupiter)
+        + "</div>"
+    )
+    
+        # ── Aspects on Venus in Different Signs (only when an aspect truly exists) ──
+    # Reuse/define local helpers (same pattern used in other aspect sections)
+    def _house_of(pid: int) -> int:
+        h = p2h.get(pid)
+        if h is not None:
+            return h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    ASPECTS = {
+        const._SUN: {6}, const._MOON: {6}, const._MERCURY: {6}, const._VENUS: {6},
+        const._MARS: {3, 6, 8}, const._JUPITER: {4, 6, 8}, const._SATURN: {2, 6, 9},
+    }
+    def _does_aspect(from_pid: int, target_house_idx: int) -> bool:
+        src = _house_of(from_pid)
+        delta = (target_house_idx - src) % 12
+        return delta in ASPECTS.get(from_pid, {6})
+
+    # Venus’s sign & house
+    v_sign = _planet_sign(const._VENUS)
+    v_house_idx = _house_of(const._VENUS)
+
+    # Host family for Venus’s current sign
+    _host_v = (
+        "mars"    if v_sign in (0, 7) else           # Aries, Scorpio
+        "own"     if v_sign in (1, 6) else           # Taurus, Libra
+        "mercury" if v_sign in (2, 5) else           # Gemini, Virgo
+        "moon"    if v_sign == 3 else                # Cancer
+        "sun"     if v_sign == 4 else                # Leo
+        "jupiter" if v_sign in (8, 11) else          # Sagittarius, Pisces
+        "saturn"                                      # Capricorn, Aquarius
+    )
+    host_label_v = {
+        "mars":    "a sign of Mars (Aries/Scorpio)",
+        "own":     "its own sign (Taurus/Libra)",
+        "mercury": "a sign of Mercury (Gemini/Virgo)",
+        "moon":    "the Moon’s sign (Cancer)",
+        "sun":     "the Sun’s sign (Leo)",
+        "jupiter": "a sign of Jupiter (Sagittarius/Pisces)",
+        "saturn":  "a sign of Saturn (Capricorn/Aquarius)",
+    }[_host_v]
+
+    # Text payloads (faithful paraphrases) keyed by Venus’s sign family
+    P_VENUS = {
+        "mars": {  # Venus in Aries/Scorpio
+            const._SUN: [
+                "Favoured by rulers/authority; tormented by the wife; scholarly."
+            ],
+            const._MOON: [
+                "Very fickle; risk of incarceration; driven by excessive sexual urge."
+            ],
+            const._MARS: [
+                "Loss of money and status; servile situations."
+            ],
+            const._MERCURY: [
+                "Hard-hearted and wicked; shunned by relatives; earns through illegitimate means."
+            ],
+            const._JUPITER: [
+                "Good looks; charitable; tall; good spouse; pleasant manners."
+            ],
+            const._SATURN: [
+                "Indolent, unattractive wanderer; thievish; keeps secret possessions."
+            ],
+        },
+        "own": {  # Venus in Taurus/Libra
+            const._SUN: [
+                "Beautiful spouse; association with attractive women; wealth."
+            ],
+            const._MOON: [
+                "Virtuous mother; blessed with sons, wealth, status and good looks; also consorts with women of easy morals."
+            ],
+            const._MARS: [
+                "Deprived of home/comforts; sensuous; subdued/defeated in conflicts."
+            ],
+            const._MERCURY: [
+                "Learned, well-mannered, sensuous; virtuous and famous."
+            ],
+            const._JUPITER: [
+                "Obtains desired things—friends, women, children, vehicles and houses."
+            ],
+            const._SATURN: [
+                "Poor, wicked and sickly; married to a difficult/immoral woman."
+            ],
+        },
+        "mercury": {  # Venus in Gemini/Virgo
+            const._SUN: [
+                "Serves women; wise; affluent; enjoys comforts."
+            ],
+            const._MOON: [
+                "Beautiful hair and eyes; youthful appearance; many comforts."
+            ],
+            const._MARS: [
+                "Fortunate and sensuous; skilful in sex; wastes money on women."
+            ],
+            const._MERCURY: [
+                "Learned, good-looking and wealthy; leads a group/community."
+            ],
+            const._JUPITER: [
+                "Preceptor/teacher; artist/photographer profile; enjoys many comforts."
+            ],
+            const._SATURN: [
+                "Humiliation and misery; shunned by people."
+            ],
+        },
+        "moon": {  # Venus in Cancer
+            const._SUN: [
+                "Quick-tempered; wealthy spouse; troubled by opponents."
+            ],
+            const._MOON: [
+                "First child a daughter, then sons; treats mother and step-mother equally."
+            ],
+            const._MARS: [
+                "Master of several arts; wealthy; troubled by women; favourable toward relatives."
+            ],
+            const._MERCURY: [
+                "Learned; spouse is learned; wealthy; a wanderer."
+            ],
+            const._JUPITER: [
+                "Wealth, children, servants, vehicles and friends; favoured by authority."
+            ],
+            const._SATURN: [
+                "Overpowered by women; poor and fallen; deprived of comforts."
+            ],
+        },
+        "sun": {  # Venus in Leo
+            const._SUN: [
+                "Jealous; driven by desire; earnings come via women."
+            ],
+            const._MOON: [
+                "Inconsistent; two mothers; famed yet suffers due to women."
+            ],
+            const._MARS: [
+                "Favoured by rulers; famous; fond of women; addicted to others’ wives; wealthy."
+            ],
+            const._MERCURY: [
+                "Hoarding/greedy; falsehood; excessive lust."
+            ],
+            const._JUPITER: [
+                "High status; many women and children; rich."
+            ],
+            const._SATURN: [
+                "King-like stature; good-looking; spouse may be a widow."
+            ],
+        },
+        "jupiter": {  # Venus in Sagittarius/Pisces
+            const._SUN: [
+                "Short-tempered, learned, wealthy and strong; travels abroad."
+            ],
+            const._MOON: [
+                "Famous, very strong; numerous physical pleasures."
+            ],
+            const._MARS: [
+                "Aversion to women; varied comforts; natural leadership."
+            ],
+            const._MERCURY: [
+                "Enjoys ornaments, good dress, food and vehicles."
+            ],
+            const._JUPITER: [
+                "Many wives/children; very wealthy; abundant sensual pleasures."
+            ],
+            const._SATURN: [
+                "Fortunate, rich, indulgent; good earner."
+            ],
+        },
+        "saturn": {  # Venus in Capricorn/Aquarius
+            const._SUN: [
+                "Steady nature; famous; wealthy, powerful and truthful."
+            ],
+            const._MOON: [
+                "Valorous, powerful and attractive; wealthy."
+            ],
+            const._MARS: [
+                "Sickliness; exhausted by labour; penury."
+            ],
+            const._MERCURY: [
+                "Learned; accumulates wealth; truthful; very scholarly."
+            ],
+            const._JUPITER: [
+                "Youthful; loves music and scents; associates with worthy women; fond of finery."
+            ],
+            const._SATURN: [
+                "Darker complexion; blessed with servants and comforts."
+            ],
+        },
+    }
+
+    # Build html for only those planets actually aspecting Venus now
+    sub_sections_venus = []
+    for aspector_pid, lines in P_VENUS[_host_v].items():
+        if not _does_aspect(aspector_pid, v_house_idx):
+            continue
+
+        title = f"{PLANET_NAMES.get(aspector_pid)} aspecting Venus in {SIGN_NAMES[v_sign]}:"
+        block = [f"<p class='text-center mb-1'><strong>{title}</strong></p>"]
+        block += [f"<p class='text-center mb-1'>• {t}</p>" for t in lines]
+
+        # Mahadasha window for the aspecting graha
+        mdv = _md_period_for(aspector_pid)
+        if mdv:
+            s, e = mdv
+            block.append(
+                f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check for the aspecting graha (avasthas + shadbala)
+        sbv = _extract_shadbala_val(sb_res, aspector_pid)
+        sb_is_weak = (aspector_pid in SHAD_THRESH and sbv is not None and sbv < SHAD_THRESH[aspector_pid])
+        is_weak_aspector = (
+            aspector_pid in avs["bala"] or
+            aspector_pid in avs["mrita"] or
+            aspector_pid in avs["sushupti"] or
+            sb_is_weak
+        )
+        if is_weak_aspector:
+            block.append(
+                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
+            )
+
+        sub_sections_venus.append(''.join(block))
+
+    if not sub_sections_venus:
+        sub_sections_venus.append("<p class='text-center mb-1'>No canonical aspect on Venus is present right now.</p>")
+
+    venus_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on Venus (by sign of Venus)</h3>"
+        f"<p class='text-center mb-1'><em>Venus is in {host_label_v}.</em></p>"
+        + "".join(sub_sections_venus)
+        + "</div>"
+    )
+    
+        # ── Aspects on Saturn in Different Signs (only when an aspect truly exists) ──
+    # Reuse/define local helpers (same pattern used in other aspect sections)
+    def _house_of(pid: int) -> int:
+        h = p2h.get(pid)
+        if h is not None:
+            return h
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                lonx = float(natal_pp[pid + 1][1][1]) % 360.0
+                sidx = int(lonx // 30)
+            except Exception:
+                sidx = 0
+        return (sidx - asc_sign) % 12
+
+    ASPECTS = {
+        const._SUN: {6}, const._MOON: {6}, const._MERCURY: {6}, const._VENUS: {6},
+        const._MARS: {3, 6, 8}, const._JUPITER: {4, 6, 8}, const._SATURN: {2, 6, 9},
+    }
+    def _does_aspect(from_pid: int, target_house_idx: int) -> bool:
+        src = _house_of(from_pid)
+        delta = (target_house_idx - src) % 12
+        return delta in ASPECTS.get(from_pid, {6})
+
+    # Saturn’s sign & house
+    sat_sign = _planet_sign(const._SATURN)
+    sat_house_idx = _house_of(const._SATURN)
+
+    # Host family for Saturn’s current sign
+    _host_s = (
+        "mars"    if sat_sign in (0, 7) else           # Aries, Scorpio
+        "venus"   if sat_sign in (1, 6) else           # Taurus, Libra
+        "mercury" if sat_sign in (2, 5) else           # Gemini, Virgo
+        "moon"    if sat_sign == 3 else                # Cancer
+        "sun"     if sat_sign == 4 else                # Leo
+        "jupiter" if sat_sign in (8, 11) else          # Sagittarius, Pisces
+        "own"                                        # Capricorn, Aquarius
+    )
+    host_label_s = {
+        "mars":    "a sign of Mars (Aries/Scorpio)",
+        "venus":   "a sign of Venus (Taurus/Libra)",
+        "mercury": "a sign of Mercury (Gemini/Virgo)",
+        "moon":    "the Moon’s sign (Cancer)",
+        "sun":     "the Sun’s sign (Leo)",
+        "jupiter": "a sign of Jupiter (Sagittarius/Pisces)",
+        "own":     "its own sign (Capricorn/Aquarius)",
+    }[_host_s]
+
+    # Text payloads (faithful paraphrases) keyed by Saturn’s sign family
+    P_SATURN = {
+        "mars": {  # Saturn in Aries/Scorpio
+            const._SUN:     ["Turns to agriculture; wealthy; tends cattle."],
+            const._MOON:    ["Keeps low company; fickle; wicked; drawn to coarse/ugly partners."],
+            const._MARS:    ["Wretched; cruel to animals; leads thieves; indulges in meat, women and wine."],
+            const._MERCURY: ["Quarrelsome; irreligious; voracious; a notorious thief."],
+            const._JUPITER: ["Religious and fortunate; high status with rulers; minister-like; wealthy."],
+            const._VENUS:   ["Ever-changing; ill-looking; addicted to others’ wives; destitute."],
+        },
+        "venus": {  # Saturn in Taurus/Libra
+            const._SUN:     ["Lacks wealth; learned; weak-bodied; clear speech."],
+            const._MOON:    ["High status with rulers; helped by women; fine clothes and ornaments."],
+            const._MARS:    ["Skilled in warfare; kind-hearted; talkative; rich."],
+            const._MERCURY: ["Very witty; eager to please women; favoured by the king."],
+            const._JUPITER: ["Helpful to others; charitable; skilful."],
+            const._VENUS:   ["Favoured by rulers; gains from gems; indulges in wine and women."],
+        },
+        "mercury": {  # Saturn in Gemini/Virgo
+            const._SUN:     ["Bereft of wealth/pleasures/anger; religious and content."],
+            const._MOON:    ["King-like; soft skin; loved and respected by women."],
+            const._MARS:    ["Fighter/wrestler; wise; limb defect; well-known."],
+            const._MERCURY: ["Wealthy; skilled in fighting and dance; talented singer/painter/sculptor."],
+            const._JUPITER: ["Favoured by rulers; virtuous; liked by friends."],
+            const._VENUS:   ["Fond of women; versed in Yoga-śāstra; adept at serving women."],
+        },
+        "moon": {  # Saturn in Cancer
+            const._SUN:     ["Early loss of father; without money/spouse/comforts; sinful."],
+            const._MOON:    ["Wealthy; harmful to mother and brothers."],
+            const._MARS:    ["Lacks strength; favoured by rulers; anxious/worrisome."],
+            const._MERCURY: ["Wanderer; deceitful; harsh; an orator."],
+            const._JUPITER: ["Has friends, sons, lands, houses; wealthy."],
+            const._VENUS:   ["Deprived of comforts despite good birth."],
+        },
+        "sun": {  # Saturn in Leo
+            const._SUN:     ["Moneyless, comfortless and of poor qualities; lies; fond of drink; slim; miserable."],
+            const._MOON:    ["Fame, wealth, women and gems; favoured by rulers."],
+            const._MARS:    ["Wanderer; dwells in forts/mountains; cruel fighter."],
+            const._MERCURY: ["Deceitful; indolent; poor; ugly."],
+            const._JUPITER: ["Leads a village/town/group; wealthy; virtuous."],
+            const._VENUS:   ["Good-looking; wealthy; troubled by women."],
+        },
+        "jupiter": {  # Saturn in Sagittarius/Pisces
+            const._SUN:     ["Famous; fond of others’ children."],
+            const._MOON:    ["Motherless; yet blessed with wife, sons and riches."],
+            const._MARS:    ["Vaata ailments; foreign residence."],
+            const._MERCURY: ["King-like; respectable; rich; good-looking."],
+            const._JUPITER: ["Equal to a king; army commander; powerful."],
+            const._VENUS:   ["Lives abroad; two mothers/fathers; pursues many things at once."],
+        },
+        "own": {  # Saturn in Capricorn/Aquarius
+            const._SUN:     ["Sickly; spouse unattractive; wanderer; miserable; carries loads."],
+            const._MOON:    ["Has wealth and wife; opposed to mother; sexually excessive."],
+            const._MARS:    ["Courageous, famous and powerful; leader of multitudes; harsh."],
+            const._MERCURY: ["Powerful; quick-tempered; famous; limited money."],
+            const._JUPITER: ["Famous; virtuous; long-lived, healthy; handsome body."],
+            const._VENUS:   ["Very wealthy; sensuous; addicted to others’ wives; norm-breaking."],
+        },
+    }
+
+    # Build html for only those planets actually aspecting Saturn now
+    sub_sections_sat = []
+    for aspector_pid, lines in P_SATURN[_host_s].items():
+        if not _does_aspect(aspector_pid, sat_house_idx):
+            continue
+
+        title = f"{PLANET_NAMES.get(aspector_pid)} aspecting Saturn in {SIGN_NAMES[sat_sign]}:"
+        block = [f"<p class='text-center mb-1'><strong>{title}</strong></p>"]
+        block += [f"<p class='text-center mb-1'>• {t}</p>" for t in lines]
+
+        # Mahadasha window for the aspecting graha
+        mdv = _md_period_for(aspector_pid)
+        if mdv:
+            s, e = mdv
+            block.append(
+                f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
+            )
+
+        # Weakness check for the aspecting graha (avasthas + shadbala)
+        sbv = _extract_shadbala_val(sb_res, aspector_pid)
+        sb_is_weak = (aspector_pid in SHAD_THRESH and sbv is not None and sbv < SHAD_THRESH[aspector_pid])
+        is_weak_aspector = (
+            aspector_pid in avs["bala"] or
+            aspector_pid in avs["mrita"] or
+            aspector_pid in avs["sushupti"] or
+            sb_is_weak
+        )
+        if is_weak_aspector:
+            block.append(
+                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
+            )
+
+        sub_sections_sat.append(''.join(block))
+
+    if not sub_sections_sat:
+        sub_sections_sat.append("<p class='text-center mb-1'>No canonical aspect on Saturn is present right now.</p>")
+
+    saturn_aspects_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Aspects on Saturn (by sign of Saturn)</h3>"
+        f"<p class='text-center mb-1'><em>Saturn is in {host_label_s}.</em></p>"
+        + "".join(sub_sections_sat)
+        + "</div>"
+    )
 
     html_out = f"""
 <div class=\"container\"> 
@@ -3848,6 +5268,13 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {rashi_saturn_html}
   {rashi_rahu_html}
   {rashi_ketu_html}
+  {sun_aspects_html}
+  {moon_aspects_html}
+  {mars_aspects_html}
+  {mercury_aspects_html}
+  {jupiter_aspects_html}
+  {venus_aspects_html}
+  {saturn_aspects_html}
 </div>
 """
     return html_out
