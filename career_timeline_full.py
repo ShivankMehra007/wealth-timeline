@@ -2194,6 +2194,996 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
     # Attach MD line and the Sun-only weakness note inside this block
     reading_sun_html = reading_sun_html.replace("</div>", f"{md_sun_note_html}{weak_sun_note_html}</div>")
+    
+        # ── Reading based on the Moon (graha-specific) ─────────────────────────
+    moon_pid = const._MOON
+    moon_name = PLANET_NAMES.get(moon_pid, "Moon")
+
+    # Moon's house from Lagna
+    moon_house_idx = p2h.get(moon_pid)
+    if moon_house_idx is None:
+        moon_house_idx = (_planet_sign(moon_pid) - lagna_sign) % 12
+    moon_house_no = moon_house_idx + 1
+
+    # simple malefic influence checks local to this block
+    NAT_MALEFICS_MOON = {
+        const._SUN, const._MARS, const._SATURN,
+        getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2),
+    }
+
+    def _planets_in_house_local(h_idx: int):
+        return [p for p, h in p2h.items() if h == h_idx]
+
+    def _malefic_aspects_house_local(target_idx: int) -> bool:
+        """Classical aspects: everyone 7th; Mars 4/8; Jupiter 5/9; Saturn 3/10; Rahu/Ketu 5/9."""
+        RAHU = getattr(const, "_RAHU", -1)
+        KETU = getattr(const, "_KETU", -2)
+        special = {
+            const._MARS: {3, 6, 7},     # 4th,7th,8th (as 0-based steps)
+            const._JUPITER: {4, 6, 8},  # 5th,7th,9th
+            const._SATURN: {2, 6, 9},   # 3rd,7th,10th
+            RAHU: {4, 6, 8},            # treat nodes like Jupiter
+            KETU: {4, 6, 8},
+        }
+        for p in NAT_MALEFICS_MOON:
+            p_house = p2h.get(p)
+            if p_house is None:
+                continue
+            step = (target_idx - p_house) % 12
+            if step == 6 or step in special.get(p, set()):
+                return True
+        return False
+
+    # first-house specific: check malefic influence on Moon itself
+    in_same_house_moon = set(_planets_in_house_local(moon_house_idx)) - {moon_pid}
+    moon_malefic_influence = any(p in NAT_MALEFICS_MOON for p in in_same_house_moon) or _malefic_aspects_house_local(moon_house_idx)
+
+    # Full Moon heuristic: Sun–Moon separation ≈ 180°
+    sun_lon = _get_lon(const._SUN)
+    moon_lon = _get_lon(const._MOON)
+    sep = abs((moon_lon - sun_lon + 180) % 360 - 180)  # shortest arc
+    is_fullish = sep >= 170  # tolerant band for “full”
+
+    reading_moon_lines: list[str] = []
+    header_moon = f"Moon is in the {SIGN_TXT[moon_house_idx]} house."
+
+    if moon_house_no == 1:
+        # General harsh set doesn’t apply for Lagna Aries/Taurus/Cancer
+        if lagna_sign not in (0, 1, 3):
+            reading_moon_lines += [
+                "Unstable mind; risks of derangement or sensory issues (deaf/mute); harsh temperament; darker/harsh looks.",
+            ]
+            if moon_malefic_influence:
+                reading_moon_lines.append("With malefic influence on Moon in Lagna: classic texts warn of shortened longevity.")
+        # Special sign-specific clauses
+        if lagna_sign == 0:   # Mesha/Aries
+            reading_moon_lines.append("With Aries rising: many children are indicated.")
+        if lagna_sign == 1:   # Vrisha/Taurus (exaltation)
+            reading_moon_lines.append("With exalted Taurus rising: wealthy, famous and pleasant-looking.")
+        if lagna_sign == 3:   # Karka/Cancer (own sign)
+            reading_moon_lines.append("With Cancer rising (own sign): wealthy, famous and good-looking.")
+        if is_fullish:
+            reading_moon_lines.append("Full Moon in Lagna: fearless, wealthy and long-lived.")
+    elif moon_house_no == 2:
+        reading_moon_lines += [
+            "Sweet speech; wealth and comforts; fond of women; large family; sparing with words.",
+        ]
+    elif moon_house_no == 3:
+        reading_moon_lines += [
+            "Virtuous and brave; enjoys support from siblings; educated.",
+        ]
+    elif moon_house_no == 4:
+        reading_moon_lines += [
+            "Generally happy; somewhat detached; learned and sensuous; fond of water sports/travel.",
+        ]
+    elif moon_house_no == 5:
+        reading_moon_lines += [
+            "Children, wealth and learning are supported; however, timidity is noted.",
+        ]
+    elif moon_house_no == 6:
+        reading_moon_lines += [
+            "Shorter longevity indications; delicate, easily angered; troubles from opponents; abdominal complaints.",
+        ]
+    elif moon_house_no == 7:
+        reading_moon_lines += [
+            "Good looks; strong sexual appetite; beautiful spouse; tendency to wander.",
+        ]
+    elif moon_house_no == 8:
+        reading_moon_lines += [
+            "Wise yet fickle; disease-prone; shortened longevity indicated.",
+        ]
+    elif moon_house_no == 9:
+        reading_moon_lines += [
+            "Dutiful; comforts, wealth, learning and children; admired by women.",
+        ]
+    elif moon_house_no == 10:
+        reading_moon_lines += [
+            "Wealthy, pious and efficient; powerful and liberal; completes undertakings thoroughly.",
+        ]
+    elif moon_house_no == 11:
+        reading_moon_lines += [
+            "Wealthy and famous; brave and thoughtful; blessed with sons; long-lived.",
+        ]
+    elif moon_house_no == 12:
+        reading_moon_lines += [
+            "Indolence and humiliation; misery and moral fall; eye disease; foreign residence likely.",
+        ]
+
+    reading_moon_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on the Moon</h3>"
+        f"<p class='text-center mb-1'><em>{header_moon}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_moon_lines)
+        + "</div>"
+    )
+
+    # Mahadasha timing note (Moon)
+    md_moon = _md_period_for(moon_pid)
+    md_moon_note_html = ""
+    if md_moon:
+        _sM, _eM = md_moon
+        md_moon_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {moon_name}:</strong> "
+            f"{_sM:%Y-%m-%d} – {_eM:%Y-%m-%d}</p>"
+        )
+
+    # Weakness check specific to Moon (Avasthas & Śaḍbala threshold)
+    weak_moon_note_html = ""
+    sb_moon_val = _extract_shadbala_val(sb_res, moon_pid)
+    sb_moon_weak = False
+    if sb_moon_val is not None and moon_pid in SHAD_THRESH:
+        sb_moon_weak = sb_moon_val < SHAD_THRESH[moon_pid]
+
+    moon_weak = (moon_pid in avs["bala"]) or (moon_pid in avs["mrita"]) or (moon_pid in avs["sushupti"]) or sb_moon_weak
+    if moon_weak:
+        weak_moon_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Moon is weak</p>"
+        )
+
+    # Attach MD line and Moon-only weakness note
+    reading_moon_html = reading_moon_html.replace("</div>", f"{md_moon_note_html}{weak_moon_note_html}</div>")
+    
+        # ── Reading based on Mars (Kuja) ─────────────────────────────────────────
+    mars_house_idx = p2h.get(const._MARS)
+    if mars_house_idx is None:
+        mars_house_idx = (_planet_sign(const._MARS) - lagna_sign) % 12
+    mars_house_no = mars_house_idx + 1
+
+    SIGN_TXT_MARS = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    mars_lines: list[str] = []
+    header_mars = f"Mars is in the {SIGN_TXT_MARS[mars_house_idx]} house."
+
+    if mars_house_no == 1:
+        mars_lines += [
+            "Harsh and dare-devilish; restless and injury-prone; health is delicate; lifespan can feel shortened.",
+        ]
+    elif mars_house_no == 2:
+        mars_lines += [
+            "Struggles with learning and stable wealth; oral/teeth issues; drifts from good company; roaming nature.",
+        ]
+    elif mars_house_no == 3:
+        mars_lines += [
+            "Very valorous and strong; hard to defeat; upstanding conduct; stressful indications for younger siblings.",
+        ]
+    elif mars_house_no == 4:
+        mars_lines += [
+            "Deprivation of home, land, funds, mother’s support and close friends; courage remains high.",
+        ]
+    elif mars_house_no == 5:
+        mars_lines += [
+            "Unsettled and unrighteous streak; risk of fewer comforts from children, wealth and allies; mental peace suffers.",
+        ]
+    elif mars_house_no == 6:
+        mars_lines += [
+            "High drive, appetite and digestive power; crushes opponents; leadership and command are highlighted.",
+        ]
+    elif mars_house_no == 7:
+        mars_lines += [
+            "Harsh temperament; health issues; risk to spouse or separation; slim frame; poverty-quarrels mix possible.",
+        ]
+    elif mars_house_no == 8:
+        mars_lines += [
+            "Suffering and poor health; longevity strain; violations/taboos attract; physical injuries possible.",
+        ]
+    elif mars_house_no == 9:
+        mars_lines += [
+            "Rebellious to dharma; treachery or harm indicators; yet can gain patronage from authority; stressful for parents.",
+        ]
+    elif mars_house_no == 10:
+        mars_lines += [
+            "Formidable and liberal; courageous; status near-royalty; fame and high regard in public life.",
+        ]
+    elif mars_house_no == 11:
+        mars_lines += [
+            "Wealth accumulation with strong desires; brave and sexually driven; achieves cherished gains.",
+        ]
+    elif mars_house_no == 12:
+        mars_lines += [
+            "Harsh and repulsive conduct; risk to marriage; danger of confinement, misery and eye complaints.",
+        ]
+
+    reading_mars_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Mars</h3>"
+        f"<p class='text-center mb-1'><em>{header_mars}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in mars_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for Mars
+    md_mars = _md_period_for(const._MARS)
+    md_mars_note_html = ""
+    if md_mars:
+        _sm, _em = md_mars
+        md_mars_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Mars:</strong> "
+            f"{_sm:%Y-%m-%d} – {_em:%Y-%m-%d}</p>"
+        )
+
+    # Weakness check for Mars (Baladi/Jagradadi avasthas + Śaḍbala)
+    weak_mars_note_html = ""
+    sb_mars_val = _extract_shadbala_val(sb_res, const._MARS)
+    sb_mars_weak = False
+    if sb_mars_val is not None and const._MARS in SHAD_THRESH:
+        sb_mars_weak = sb_mars_val < SHAD_THRESH[const._MARS]
+    mars_is_weak = (
+        (const._MARS in avs["bala"]) or
+        (const._MARS in avs["mrita"]) or
+        (const._MARS in avs["sushupti"]) or
+        sb_mars_weak
+    )
+    if mars_is_weak:
+        weak_mars_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Mars is weak</p>"
+        )
+
+    # Attach MD line and the weakness note inside this block
+    reading_mars_html = reading_mars_html.replace("</div>", f"{md_mars_note_html}{weak_mars_note_html}</div>")
+    
+        # ── Reading based on Mercury (intellect/skills/commerce) ────────────────
+    merc_pid = const._MERCURY
+    merc_name = PLANET_NAMES.get(merc_pid, "Mercury")
+
+    merc_house_idx = p2h.get(merc_pid)
+    if merc_house_idx is None:
+        merc_house_idx = (_planet_sign(merc_pid) - lagna_sign) % 12
+    merc_house_no = merc_house_idx + 1
+
+    SIGN_TXT_MER = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    header_mercury = f"Mercury is in the {SIGN_TXT_MER[merc_house_idx]} house."
+    reading_mercury_lines: list[str] = []
+
+    if merc_house_no == 1:
+        reading_mercury_lines += [
+            "Healthy constitution; articulate and pleasant speech.",
+            "Sharp intellect—mathematical/logical ability; scriptural or scholarly bend; long life.",
+        ]
+    elif merc_house_no == 2:
+        reading_mercury_lines += [
+            "Polished speech; educated; wealthy; enjoys fine meals and comforts.",
+        ]
+    elif merc_house_no == 3:
+        reading_mercury_lines += [
+            "Restless/variable disposition; hands-on hard worker; can be crafty or deceptive.",
+            "Occult/magical interests possible; generally supported by siblings.",
+        ]
+    elif merc_house_no == 4:
+        reading_mercury_lines += [
+            "Very learned; wealth, vehicles, home and comforts are supported.",
+            "Good friendships and social network around the home base.",
+        ]
+    elif merc_house_no == 5:
+        reading_mercury_lines += [
+            "Recognition through learning/skills; mantra or technical proficiency.",
+            "Many children indicated; courageous and generally content.",
+        ]
+    elif merc_house_no == 6:
+        reading_mercury_lines += [
+            "Argumentative and quick-tempered; enjoys debate and wins against opponents.",
+            "Can be indolent and prone to ailments; not very supportive to close relations.",
+        ]
+    elif merc_house_no == 7:
+        reading_mercury_lines += [
+            "Knowledgeable, wise and reputable; spouse tends to be resourceful/wealthy.",
+        ]
+    elif merc_house_no == 8:
+        reading_mercury_lines += [
+            "Name/fame despite obstacles; long-lived indications; judicial or arbitration abilities.",
+        ]
+    elif merc_house_no == 9:
+        reading_mercury_lines += [
+            "Prosperous and learned; eloquent; clever; virtuous and law-abiding.",
+        ]
+    elif merc_house_no == 10:
+        reading_mercury_lines += [
+            "Accomplished and efficient; righteous in professional conduct; well-known for skills.",
+        ]
+    elif merc_house_no == 11:
+        reading_mercury_lines += [
+            "Long life; truthful and intellectual; wealth, recognition and sensual enjoyments.",
+        ]
+    elif merc_house_no == 12:
+        reading_mercury_lines += [
+            "Indolent and withdrawn or austere; can appear unappealing; yet learned and sweet-spoken.",
+        ]
+
+    reading_mercury_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Mercury</h3>"
+        f"<p class='text-center mb-1'><em>{header_mercury}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_mercury_lines)
+        + "</div>"
+    )
+
+    # Mahadasha window for Mercury
+    md_mer = _md_period_for(merc_pid)
+    md_mer_note_html = ""
+    if md_mer:
+        _sm, _em = md_mer
+        md_mer_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Mercury:</strong> "
+            f"{_sm:%Y-%m-%d} – {_em:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Mercury (Avasthas & Śaḍbala)
+    weak_mer_note_html = ""
+    sb_merc = _extract_shadbala_val(sb_res, merc_pid)
+    sb_merc_weak = False
+    if (sb_merc is not None) and (merc_pid in SHAD_THRESH):
+        sb_merc_weak = sb_merc < SHAD_THRESH[merc_pid]
+
+    merc_weak = (merc_pid in avs["bala"]) or (merc_pid in avs["mrita"]) or (merc_pid in avs["sushupti"]) or sb_merc_weak
+    if merc_weak:
+        weak_mer_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Mercury is weak</p>"
+        )
+
+    # Attach MD line and weakness note inside this block
+    reading_mercury_html = reading_mercury_html.replace("</div>", f"{md_mer_note_html}{weak_mer_note_html}</div>")
+    
+        # ── Reading based on Jupiter (Guru) ─────────────────────────────────────
+    j_pid = const._JUPITER
+    j_name = PLANET_NAMES.get(j_pid, "Jupiter")
+
+    j_house_idx = p2h.get(j_pid)
+    if j_house_idx is None:
+        j_house_idx = (_planet_sign(j_pid) - asc_sign) % 12
+    j_house_no = j_house_idx + 1
+
+    SIGN_TXTJ = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading_j_lines: list[str] = []
+    header_j = f"Jupiter is in the {SIGN_TXTJ[j_house_idx]} house."
+
+    if j_house_no == 1:
+        reading_j_lines += [
+            "Learned, fearless and long-lived; balanced outlook; handsome; wealth indicated.",
+        ]
+    elif j_house_no == 2:
+        reading_j_lines += [
+            "Wealthy; eloquent; pleasant looks; enjoys good food; helpful and liberal.",
+        ]
+    elif j_house_no == 3:
+        reading_j_lines += [
+            "Subdued by sibling and spouse; covetous and troubled; still overcomes opponents; sluggish digestion; supportive for siblings.",
+        ]
+    elif j_house_no == 4:
+        reading_j_lines += [
+            "Comforts, wealth, vehicles and wise counsel; surrounded by near ones; defeats foes; content and good-looking.",
+        ]
+    elif j_house_no == 5:
+        reading_j_lines += [
+            "Learned, famous, wealthy and virtuous; advisory/ministerial capacity; strain through children is indicated.",
+        ]
+    elif j_house_no == 6:
+        reading_j_lines += [
+            "Indolent yet defeats enemies; weak digestion; hen-pecked tendencies; very famous; physically weak and lustful.",
+        ]
+    elif j_house_no == 7:
+        reading_j_lines += [
+            "Learned and renowned; surpasses the father; blessed with a good spouse and children.",
+        ]
+    elif j_house_no == 8:
+        reading_j_lines += [
+            "Miserable and servile tone; livelihood through service; unclean habits; adulterous streak; long life is indicated.",
+        ]
+    elif j_house_no == 9:
+        reading_j_lines += [
+            "Devout and learned; wealthy and famed; blessed with sons; leadership or ministerial role.",
+        ]
+    elif j_house_no == 10:
+        reading_j_lines += [
+            "Brings undertakings to completion; endowed with wisdom, wealth and virtue.",
+        ]
+    elif j_house_no == 11:
+        reading_j_lines += [
+            "Wealthy, steadfast and long-lived; fewer sons indicated.",
+        ]
+    elif j_house_no == 12:
+        reading_j_lines += [
+            "Indolent, irresolute and morally compromised; servile; lack of progeny indicated.",
+        ]
+
+    reading_jupiter_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Jupiter</h3>"
+        f"<p class='text-center mb-1'><em>{header_j}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_j_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for Jupiter
+    md_j = _md_period_for(j_pid)
+    md_j_note_html = ""
+    if md_j:
+        _sj, _ej = md_j
+        md_j_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Jupiter:</strong> "
+            f"{_sj:%Y-%m-%d} – {_ej:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Jupiter (Avasthas & Shadbala)
+    weak_j_note_html = ""
+    sb_j_val = _extract_shadbala_val(sb_res, j_pid)
+    sb_j_weak = False
+    if sb_j_val is not None and j_pid in SHAD_THRESH:
+        sb_j_weak = sb_j_val < SHAD_THRESH[j_pid]
+
+    weak_j = (j_pid in avs["bala"]) or (j_pid in avs["mrita"]) or (j_pid in avs["sushupti"]) or sb_j_weak
+    if weak_j:
+        weak_j_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the Jupiter is weak</p>"
+        )
+
+    # Attach MD line and the weakness note directly inside this block
+    reading_jupiter_html = reading_jupiter_html.replace("</div>", f"{md_j_note_html}{weak_j_note_html}</div>")
+    
+        # ── Reading based on Venus (Śukra) ──────────────────────────────────────
+    v_pid = const._VENUS
+    v_name = PLANET_NAMES.get(v_pid, "Venus")
+
+    v_house_idx = p2h.get(v_pid)
+    if v_house_idx is None:
+        v_house_idx = (_planet_sign(v_pid) - lagna_sign) % 12
+    v_house_no = v_house_idx + 1
+
+    SIGN_TXTV = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    header_v = f"Venus is in the {SIGN_TXTV[v_house_idx]} house."
+    v_lines: list[str] = []
+
+    if v_house_no == 1:
+        v_lines += [
+            "Attractive presence; romantic; educated; generally contented and long-lived.",
+        ]
+    elif v_house_no == 2:
+        v_lines += [
+            "Wealth and grace; refined speech; poetic/creative talent.",
+        ]
+    elif v_house_no == 3:
+        v_lines += [
+            "Covetous yet financially able; tends to be influenced/managed by spouse; avoids strenuous ventures.",
+        ]
+    elif v_house_no == 4:
+        v_lines += [
+            "Good home, ornaments, clothing and vehicles; pleasing looks; boastful streak; often yields to spouse.",
+        ]
+    elif v_house_no == 5:
+        v_lines += [
+            "Wealth, sensuality and status; comforts, children and friends are supported; pleasing appearance.",
+        ]
+    elif v_house_no == 6:
+        v_lines += [
+            "Few open enemies but poverty/misery themes; many romantic ties; little joy from spouse; reputation suffers.",
+        ]
+    elif v_house_no == 7:
+        v_lines += [
+            "Quarrelsome and very passionate; charming looks; association with alluring but low characters.",
+        ]
+    elif v_house_no == 8:
+        v_lines += [
+            "Longevity with opulence; many comforts; stature akin to royalty; a contented tone overall.",
+        ]
+    elif v_house_no == 9:
+        v_lines += [
+            "Learned and wealthy; spouse, children, friends and comforts indicated; religious inclination.",
+        ]
+    elif v_house_no == 10:
+        v_lines += [
+            "High status, influence and wealth; public image strengthened; benefits and help through women.",
+        ]
+    elif v_house_no == 11:
+        v_lines += [
+            "Affluence; liaison with women not one’s own; relief from pains and miseries.",
+        ]
+    elif v_house_no == 12:
+        v_lines += [
+            "Indolence and fall from standards; skilled in love; debauchery noted.",
+        ]
+
+    reading_venus_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Venus</h3>"
+        f"<p class='text-center mb-1'><em>{header_v}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in v_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for Venus
+    md_v = _md_period_for(v_pid)
+    md_v_note_html = ""
+    if md_v:
+        _sv, _ev = md_v
+        md_v_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Venus:</strong> "
+            f"{_sv:%Y-%m-%d} – {_ev:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Venus (Avasthas & Śaḍbala)
+    weak_v_note_html = ""
+    sb_v_val = _extract_shadbala_val(sb_res, v_pid)
+    sb_v_weak = False
+    if sb_v_val is not None and v_pid in SHAD_THRESH:
+        sb_v_weak = sb_v_val < SHAD_THRESH[v_pid]
+
+    v_is_weak = (v_pid in avs["bala"]) or (v_pid in avs["mrita"]) or (v_pid in avs["sushupti"]) or sb_v_weak
+    if v_is_weak:
+        weak_v_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Venus is weak</p>"
+        )
+
+    # Attach MD line + weakness note within this block
+    reading_venus_html = reading_venus_html.replace("</div>", f"{md_v_note_html}{weak_v_note_html}</div>")
+    
+        # ── Reading based on Saturn (Śani) ──────────────────────────────────────
+    s_pid = const._SATURN
+    s_name = PLANET_NAMES.get(s_pid, "Saturn")
+
+    s_house_idx = p2h.get(s_pid)
+    if s_house_idx is None:
+        s_house_idx = (_planet_sign(s_pid) - lagna_sign) % 12
+    s_house_no = s_house_idx + 1
+
+    # House names for narration
+    SIGN_TXTS = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    header_s = f"Saturn is in the {SIGN_TXTS[s_house_idx]} house."
+    s_lines: list[str] = []
+
+    if s_house_no == 1:
+        # Special condition: very good results if Lagna itself is Libra (exaltation),
+        # Capricorn/Aquarius (own), or Jupiter’s signs Sagittarius/Pisces.
+        very_good_lagnas = {_EXALTS[const._SATURN],  # Libra (6)
+                            9, 10,                   # Capricorn, Aquarius
+                            8, 11}                   # Sagittarius, Pisces
+        if lagna_sign in very_good_lagnas:
+            s_lines += [
+                "Despite Saturn in the ascendant, this specific Lagna makes the placement powerfully auspicious.",
+                "Status and authority (king-like/headman), long life, virtue and scholarship are indicated.",
+            ]
+        else:
+            s_lines += [
+                "Difficult ascendant placement: misery, lethargy, lust, poor health and looks; risk of bodily defects and bad odour.",
+            ]
+    elif s_house_no == 2:
+        s_lines += [
+            "Early life shows want and harsh speech; disease of the mouth likely.",
+            "Later years: leaves birthplace and amasses wealth, possessions and comforts.",
+        ]
+    elif s_house_no == 3:
+        s_lines += [
+            "Morally rough/slothful streak, yet physically strong, liberal, wise and wealthy.",
+        ]
+    elif s_house_no == 4:
+        s_lines += [
+            "Stress around mother/home; distance from close kin; nevertheless wise and wealthy.",
+            "Childhood/early sickness is indicated.",
+        ]
+    elif s_house_no == 5:
+        s_lines += [
+            "Mental unrest/instability; unhappiness; denial around children, comforts and wisdom.",
+            "Still capable of overcoming opponents.",
+        ]
+    elif s_house_no == 6:
+        s_lines += [
+            "Wealth with strong appetite and libido; pleasing looks; yet harassment by enemies persists.",
+        ]
+    elif s_house_no == 7:
+        s_lines += [
+            "Chronic ailments and poverty themes; spouse may be sickly; sense of uncleanness or aversion from others.",
+        ]
+    elif s_house_no == 8:
+        s_lines += [
+            "Starts heroic and forceful but loses power and money later; perianal disease risk.",
+            "Note: Saturn in the 8th is classically supportive for health and longevity overall.",
+        ]
+    elif s_house_no == 9:
+        s_lines += [
+            "Irreligious streak; misfortune and poverty; adverse to father; can be hurtful to others.",
+        ]
+    elif s_house_no == 10:
+        s_lines += [
+            "Learned, wealthy, powerful—judicial/leadership roles possible; proud and heroic bearing.",
+        ]
+    elif s_house_no == 11:
+        s_lines += [
+            "Stable reputation, good health and great wealth; sensuality; longevity indicated.",
+        ]
+    elif s_house_no == 12:
+        s_lines += [
+            "Eye troubles and wasteful spending; shameless conduct and suffering; still shows leadership in harsh contexts.",
+        ]
+
+    reading_saturn_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Saturn</h3>"
+        f"<p class='text-center mb-1'><em>{header_s}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in s_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for Saturn
+    md_s = _md_period_for(s_pid)
+    md_s_note_html = ""
+    if md_s:
+        _ss, _es = md_s
+        md_s_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Saturn:</strong> "
+            f"{_ss:%Y-%m-%d} – {_es:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Saturn (Avasthas & Śaḍbala)
+    weak_s_note_html = ""
+    sb_s_val = _extract_shadbala_val(sb_res, s_pid)
+    sb_s_weak = False
+    if sb_s_val is not None and s_pid in SHAD_THRESH:
+        sb_s_weak = sb_s_val < SHAD_THRESH[s_pid]
+
+    s_is_weak = (s_pid in avs["bala"]) or (s_pid in avs["mrita"]) or (s_pid in avs["sushupti"]) or sb_s_weak
+    if s_is_weak:
+        weak_s_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Saturn is weak</p>"
+        )
+
+    # Attach MD line + weakness note within this block
+    reading_saturn_html = reading_saturn_html.replace("</div>", f"{md_s_note_html}{weak_s_note_html}</div>")
+    
+        # ── Reading based on Rahu (Rāhu) ───────────────────────────────────────
+    r_pid = getattr(const, "_RAHU", 7)
+    r_name = PLANET_NAMES.get(r_pid, "Rahu")
+
+    r_house_idx = p2h.get(r_pid)
+    if r_house_idx is None:
+        r_house_idx = (_planet_sign(r_pid) - lagna_sign) % 12
+    r_house_no = r_house_idx + 1
+
+    # sign (for special conditions)
+    try:
+        r_sign = int(natal_pp[r_pid + 1][1][0])
+    except Exception:
+        try:
+            _rlon = float(natal_pp[r_pid + 1][1][1]) % 360.0
+            r_sign = int(_rlon // 30)
+        except Exception:
+            r_sign = (lagna_sign + r_house_idx) % 12
+
+    # Helper: benefic aspect on the Ascendant (house index 0)
+    def _benefic_aspects_asc() -> bool:
+        """Check if a natural benefic (Moon, Venus, Jupiter, Mercury) aspects Lagna.
+        Uses classical aspects: all planets -> 7th; Jupiter adds 5th & 9th."""
+        target_idx = 0  # Lagna house index
+        for p in (const._MOON, const._VENUS, const._JUPITER, const._MERCURY):
+            p_idx = p2h.get(p)
+            if p_idx is None:
+                continue
+            delta = (target_idx - p_idx) % 12
+            # 7th aspect always
+            if delta == 6:
+                return True
+            # Jupiter's special aspects (5th, 9th)
+            if p == const._JUPITER and delta in (4, 8):
+                return True
+        return False
+
+    SIGN_TXTR = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    header_r = f"Rahu is in the {SIGN_TXTR[r_house_idx]} house."
+    r_lines: list[str] = []
+
+    if r_house_no == 1:
+        # Baseline statement
+        r_lines += [
+            "Harsh and unyielding streak; wealth comes with turbulence; shorter longevity themes; bold yet cruel; little compassion; rough hair/nails/appearance; ailments in the upper body.",
+        ]
+        # Mesha/Karka/Siṁha special
+        if lagna_sign in {0, 3, 4}:
+            r_lines.append("Because Lagna is Aries, Cancer, or Leo: pleasures and affluence are specifically indicated despite the harsh tone.")
+        # Benefic aspect on Lagna
+        if _benefic_aspects_asc():
+            r_lines.append("Benefic aspect on the ascendant adds comforts and enjoyments, softening Rahu’s edge.")
+    elif r_house_no == 2:
+        r_lines += [
+            "Quarrels, poverty themes and theft-like behaviours; relies on patronage/authority for income.",
+            "Unclear or double-edged speech; mouth/teeth issues; trades linked to skins/fish/odd commodities.",
+        ]
+    elif r_house_no == 3:
+        r_lines += [
+            "Wealthy, valiant, proud and long-lived; tension with brothers; comforts of spouse/friends/pleasures indicated.",
+        ]
+        # Rahu exaltation (Vr̥ṣabha/Taurus)
+        if r_sign == 1:
+            r_lines.append("Rahu in Taurus (its exaltation per tradition): gains include vehicles and attendants.")
+    elif r_house_no == 4:
+        r_lines += [
+            "Destitution and folly; reduced lifespan; loss of wealth and home comforts; conflict with spouse around domestic matters.",
+        ]
+    elif r_house_no == 5:
+        r_lines += [
+            "Irascible; risks to children; compassionate yet phobic; abdominal disorders indicated.",
+        ]
+    elif r_house_no == 6:
+        r_lines += [
+            "Harried by foes yet also their destroyer; wealth, children and many comforts show up; adultery themes; perianal disease; longer life indicated.",
+        ]
+    elif r_house_no == 7:
+        r_lines += [
+            "Loss through women; adulterous ties; separation/bereft of spouse; wicked yet brave; chronic ailments.",
+        ]
+    elif r_house_no == 8:
+        r_lines += [
+            "Shorter longevity patterns; vāta disorders; few children; misery with fearlessness; perianal disease; lethargy.",
+        ]
+    elif r_house_no == 9:
+        r_lines += [
+            "Leader/headman type; opposes father; harsh/cruel expression; harried by opponents.",
+        ]
+    elif r_house_no == 10:
+        r_lines += [
+            "Fearless, helpful and famous; sensual and prone to unlawful ventures; can be learned, wealthy and advisory (minister-like); detached, wandering.",
+        ]
+    elif r_house_no == 11:
+        r_lines += [
+            "Wealth and longevity; fewer children; combative spirit with self-control; handsome and laconic; scriptural bent; foreign residence; ear disorders.",
+        ]
+    elif r_house_no == 12:
+        r_lines += [
+            "Loss of comforts, money and virtue; immorality and secret sin; fickleness and chronic ailments; water-borne disease; foreign residence.",
+        ]
+
+    reading_rahu_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Rahu</h3>"
+        f"<p class='text-center mb-1'><em>{header_r}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in r_lines)
+        + "</div>"
+    )
+
+    # Mahadasha note for Rahu
+    md_r = _md_period_for(r_pid)
+    md_r_note_html = ""
+    if md_r:
+        _sr, _er = md_r
+        md_r_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of Rahu:</strong> "
+            f"{_sr:%Y-%m-%d} – {_er:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Rahu (Avasthas & Śaḍbala if available)
+    weak_r_note_html = ""
+    sb_r_val = _extract_shadbala_val(sb_res, r_pid)
+    sb_r_weak = False
+    if r_pid in SHAD_THRESH and sb_r_val is not None:
+        sb_r_weak = sb_r_val < SHAD_THRESH[r_pid]
+
+    r_is_weak = (r_pid in avs["bala"]) or (r_pid in avs["mrita"]) or (r_pid in avs["sushupti"]) or sb_r_weak
+    if r_is_weak:
+        weak_r_note_html = (
+            "<p class='text-center mt-2'><strong>Note:</strong> "
+            "The above predictions may not manifest very strongly, since the Rahu is weak</p>"
+        )
+
+    # Attach MD line + weakness note within this block
+    reading_rahu_html = reading_rahu_html.replace("</div>", f"{md_r_note_html}{weak_r_note_html}</div>")
+    
+        # ── Reading based on Ketu (moksha-karaka / detachment) ───────────────────
+    KETU = getattr(const, "_KETU", -2)
+    ketu_name = "Ketu"
+    # House of Ketu (prefer p2h; fallback via sign difference)
+    k_house_idx = p2h.get(KETU)
+    if k_house_idx is None:
+        # derive from rasi sign
+        try:
+            k_sign_idx = int(natal_pp[KETU + 1][1][0])
+        except Exception:
+            try:
+                _klon = float(natal_pp[KETU + 1][1][1]) % 360.0
+                k_sign_idx = int(_klon // 30)
+            except Exception:
+                k_sign_idx = asc_sign  # safest fallback
+        k_house_idx = (k_sign_idx - asc_sign) % 12
+    k_house_no = k_house_idx + 1
+
+    # Also need the current sign of Ketu for conditional notes
+    def _planet_sign_safe(pid: int) -> int:
+        try:
+            return int(natal_pp[pid + 1][1][0])
+        except Exception:
+            try:
+                _lon = float(natal_pp[pid + 1][1][1]) % 360.0
+                return int(_lon // 30)
+            except Exception:
+                return asc_sign
+    k_sign = _planet_sign_safe(KETU)
+
+    # Helpers for the conditions you specified
+    BENEFIC_SET = {const._JUPITER, const._VENUS, const._MERCURY, const._MOON}
+    def _benefic_aspects_house_local(target_idx: int) -> bool:
+        """Use the benefic aspect helper already defined earlier if present, else minimal fallback."""
+        try:
+            # if the earlier helper exists, use it
+            return _benefic_aspects_house(target_idx)  # type: ignore[name-defined]
+        except Exception:
+            # minimal 7th-aspect fallback
+            for p in BENEFIC_SET:
+                p_h = p2h.get(p)
+                if p_h is None:
+                    continue
+                if (target_idx - p_h) % 12 == 6:
+                    return True
+            return False
+
+    # Signs of Saturn for the special Lagna condition
+    SATURN_SIGNS = {10, 11}  # Capricorn, Aquarius (0=Aries)
+    # Signs of natural benefics (for “in sign of a benefic” check)
+    def _sign_is_of_benefic(sign_idx: int) -> bool:
+        return _SIGN_LORD[sign_idx] in BENEFIC_SET
+
+    SIGN_TXT_K = [
+        "first", "second", "third", "fourth", "fifth", "sixth",
+        "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+    ]
+
+    reading_ketu_lines: list[str] = []
+    header_ketu = f"{ketu_name} is in the {SIGN_TXT_K[k_house_idx]} house."
+
+    if k_house_no == 1:
+        reading_ketu_lines += [
+            "Harsh temperament with courage; little compassion; appearance and nails/hair may be unattractive.",
+            "Upper-body ailments are possible; wealth can come despite a rough edge.",
+        ]
+        # (i) Benefic aspect on Lagna
+        if _benefic_aspects_house_local(0):
+            reading_ketu_lines.append("With benefic aspect on the ascendant: comforts and enjoyments are indicated.")
+        # (ii) In Lagna in a Saturn sign
+        if asc_sign in SATURN_SIGNS:
+            reading_ketu_lines.append("Placed in a Saturnic ascendant: wealth and children are supported.")
+    elif k_house_no == 2:
+        reading_ketu_lines += [
+            "Quarrelsome and sharp-tongued; risk of unclear speech or mouth/teeth issues.",
+            "Poverty or dependence on patrons; gains may come through authorities or unusual trades (skins, fish, etc.).",
+        ]
+        # Benefic sign condition
+        if _sign_is_of_benefic(k_sign):
+            reading_ketu_lines.append("Because it is in a sign of a natural benefic: physical comforts are improved.")
+    elif k_house_no == 3:
+        reading_ketu_lines += [
+            "Wealthy, valiant and proud; long life; conflict with siblings is possible.",
+            "If strongly placed, vehicles and servants are supported.",
+        ]
+    elif k_house_no == 4:
+        reading_ketu_lines += [
+            "Loss of mother’s support and homely comforts; financial strain and frequent relocations.",
+            "Opposition to spouse; inclination to spread malicious talk.",
+        ]
+    elif k_house_no == 5:
+        reading_ketu_lines += [
+            "Phobias and abdominal issues; fear of water; weak for learning and progeny.",
+        ]
+    elif k_house_no == 6:
+        reading_ketu_lines += [
+            "Destroys enemies; good health and generosity; erudition with a sharp edge.",
+            "May face humiliation via maternal uncle; gains through quadrupeds/livestock.",
+        ]
+    elif k_house_no == 7:
+        reading_ketu_lines += [
+            "Little marital comfort; wandering and poor judgment in partners; losses through women; intestinal or seminal disorders.",
+            "Humiliation and fear from water are possible.",
+        ]
+        # Exaltation note (Vrischika/Scorpio)
+        if k_sign == 7:  # Scorpio
+            reading_ketu_lines.append("In Scorpio in the 7th: multiple material benefits are classically indicated.")
+    elif k_house_no == 8:
+        reading_ketu_lines += [
+            "Perianal disease; separation from close ones; danger from weapons/accidents.",
+            "Avarice and immorality can surface; health is delicate.",
+        ]
+        # Wealth-gain signs in the 8th (Mesha, Vrisha, Mithuna, Kanya, Vrischika)
+        if k_sign in {0, 1, 2, 5, 7}:
+            reading_ketu_lines.append("In this sign in the 8th: gains of wealth are indicated despite the harsh significations.")
+    elif k_house_no == 9:
+        reading_ketu_lines += [
+            "Short-tempered yet eloquent; desires progeny but clashes with father and lacks siblings’ support.",
+            "Fortune improves via help from foreigners/non-believers.",
+        ]
+    elif k_house_no == 10:
+        reading_ketu_lines += [
+            "Powerful and renowned; destroys opponents; inwardly spiritual/gnostic.",
+            "Little comfort from father; wandering tendency; looks may be austere or unappealing.",
+        ]
+        # Extra classical note (strong placements like Mesha, Vrisha, Kanya, Vrischika are combative) already implicit.
+    elif k_house_no == 11:
+        reading_ketu_lines += [
+            "Valiant, powerful and virtuous; learned and good-looking.",
+            "Subtle fears; children may be troublesome; significant gains through effort.",
+        ]
+    elif k_house_no == 12:
+        reading_ketu_lines += [
+            "Secretive misconduct; ailments of legs/feet/anal region and eye.",
+            "Victorious in conflict yet spends on charities; fickle in resolve.",
+        ]
+
+    reading_ketu_html = (
+        f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Ketu</h3>"
+        f"<p class='text-center mb-1'><em>{header_ketu}</em></p>"
+        + "".join(f"<p class='text-center mb-1'>• {line}</p>" for line in reading_ketu_lines)
+        + "</div>"
+    )
+
+    # Mahadasha line for Ketu
+    mdK = _md_period_for(KETU)
+    mdK_note_html = ""
+    if mdK:
+        _sK, _eK = mdK
+        mdK_note_html = (
+            f"<p class='text-center mt-2'><strong>"
+            f"The above effects would be more prominent in the mahadasha of {ketu_name}:</strong> "
+            f"{_sK:%Y-%m-%d} – {_eK:%Y-%m-%d}</p>"
+        )
+
+    # Weakness note for Ketu (Avasthas & Shadbala) – local threshold per your spec
+    weakK_note_html = ""
+    try:
+        sbK_val = _extract_shadbala_val(sb_res, KETU)
+    except Exception:
+        sbK_val = None
+    # Recommended virupa threshold for Ketu
+    KETU_THRESH = 300
+    sbK_weak = (sbK_val is not None) and (sbK_val < KETU_THRESH)
+    weakK = (KETU in avs["bala"]) or (KETU in avs["mrita"]) or (KETU in avs["sushupti"]) or sbK_weak
+    if weakK:
+        weakK_note_html = (
+            f"<p class='text-center mt-2'><strong>Note:</strong> "
+            f"The above predictions may not manifest very strongly, since the {ketu_name} is weak</p>"
+        )
+
+    # Attach MD line and weakness note directly to Ketu block
+    reading_ketu_html = reading_ketu_html.replace("</div>", f"{mdK_note_html}{weakK_note_html}</div>")
 
     html_out = f"""
 <div class=\"container\"> 
@@ -2219,6 +3209,14 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {reading11_html}
   {reading12_html}
   {reading_sun_html}
+  {reading_moon_html}
+  {reading_mars_html}
+  {reading_mercury_html}
+  {reading_jupiter_html}
+  {reading_venus_html}
+  {reading_saturn_html}
+  {reading_rahu_html}
+  {reading_ketu_html}
 </div>
 """
     return html_out
