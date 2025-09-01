@@ -5225,6 +5225,243 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         + "".join(sub_sections_sat)
         + "</div>"
     )
+    
+        # ── Yogas & Doṣas – auto-discovery, evidence & effects ─────────────────
+    def _effect_hint(name: str) -> str:
+        """Lightweight classic-effect hint when the library output lacks one."""
+        n = (name or "").lower().replace("_", " ").strip()
+        if "raja" in n or "rajayoga" in n:
+            return "Classic rāja-yoga: rise in status, authority, patronage; support from power."
+        if "dhan" in n or "dhana" in n or "wealth" in n:
+            return "Wealth-yoga: accumulation of assets, earnings and financial leverage."
+        if "gaja" in n or "kesari" in n:
+            return "Gaja-Keśarī: reputation, patronage, counsel, protection from harm."
+        if "chandra" in n and "mangal" in n:
+            return "Chandra-Maṅgala: trading/commercial drive, liquidity, business acumen."
+        if "pancha" in n or "mahapurusha" in n or "panch" in n:
+            return "Mahāpuruṣa yoga: strong worldly prominence (planet-specific expression)."
+        if "vipareet" in n or "viparita" in n:
+            return "Viparīta rāja-yoga: gains via adversity, hidden support after setbacks."
+        if "sakata" in n:
+            return "Sakata-doṣa: boom-bust cycles, wavering fortunes linked to the Moon."
+        if "kemadrum" in n:
+            return "Kema-druma: isolation/instability of mind and resources; remedial support helps."
+        if "daridra" in n:
+            return "Daridra doṣa: poverty/shortfall indications unless strongly cancelled."
+        if "kala" in n and "sarpa" in n:
+            return "Kāla-Sarp(a): constrictive patterns, sudden rises/falls; cancellations can moderate."
+        if "pitra" in n or "pitri" in n:
+            return "Pitṛ-doṣa: ancestral/lineage obligations; delays till propitiated or offset."
+        return "Favourable/Adverse yoga per classical rules; strength varies with dignity and aspect."
+
+    def _stringify(obj) -> str:
+        if obj is None:
+            return ""
+        if isinstance(obj, (str, int, float)):
+            return str(obj)
+        if isinstance(obj, (list, tuple, set)):
+            parts = []
+            for it in obj:
+                parts.append(_stringify(it))
+            return "; ".join([p for p in parts if p])
+        if isinstance(obj, dict):
+            kv = []
+            for k, v in obj.items():
+                if isinstance(v, (dict, list, tuple)) and not v:
+                    continue
+                kv.append(f"{k}: {_stringify(v)}")
+            return "; ".join([p for p in kv if p])
+        return str(obj)
+
+    def _normalise_yoga_output(data) -> list[dict]:
+        """Turn any reasonable library output into [{name, evidence, effects}] items."""
+        out = []
+        if not data:
+            return out
+        # Dict: name -> details
+        if isinstance(data, dict):
+            for k, v in data.items():
+                name = _stringify(k)
+                evidence = ""
+                effects = ""
+                if isinstance(v, dict):
+                    # look for common keys
+                    evidence = _stringify(v.get("evidence") or v.get("details") or v.get("why") or v.get("comment") or v.get("conditions"))
+                    effects  = _stringify(v.get("effect") or v.get("effects") or v.get("result") or v.get("prediction"))
+                    if not effects:
+                        effects = _effect_hint(name)
+                elif isinstance(v, (list, tuple, set)):
+                    evidence = _stringify(v)
+                    effects = _effect_hint(name)
+                elif isinstance(v, (str, int, float, bool)):
+                    if isinstance(v, bool):
+                        if not v:
+                            continue
+                        evidence = "Detected by yoga checker."
+                        effects = _effect_hint(name)
+                    else:
+                        # could be a textual verdict
+                        txt = _stringify(v)
+                        evidence = txt
+                        effects  = _effect_hint(name)
+                else:
+                    evidence = _stringify(v)
+                    effects = _effect_hint(name)
+                out.append({"name": name, "evidence": evidence, "effects": effects})
+            return out
+        # List/tuple: maybe list of names or detailed tuples
+        if isinstance(data, (list, tuple, set)):
+            for item in data:
+                if isinstance(item, (tuple, list)) and item:
+                    name = _stringify(item[0])
+                    details = _stringify(item[1:]) if len(item) > 1 else ""
+                    out.append({"name": name, "evidence": details or "Detected.", "effects": _effect_hint(name)})
+                else:
+                    name = _stringify(item)
+                    out.append({"name": name, "evidence": "Detected.", "effects": _effect_hint(name)})
+            return out
+        # Fallback boolean/string
+        if isinstance(data, bool):
+            if data:
+                out.append({"name": "Yoga", "evidence": "Detected.", "effects": _effect_hint("yoga")})
+            return out
+        if isinstance(data, (str, int, float)):
+            out.append({"name": str(data), "evidence": "Detected.", "effects": _effect_hint(str(data))})
+            return out
+        return out
+
+    def _try_call(func, *args):
+        try:
+            return func(*args)
+        except TypeError:
+            # Try alternate signatures commonly seen in pyjhora forks
+            for alt in (
+                (natal_pp,),                           # (pp)
+                (natal_pp, asc_sign),                  # (pp, asc)
+                (natal_pp, p2h),                       # (pp, p2h)
+                (natal_pp, asc_sign, p2h),             # (pp, asc, p2h)
+            ):
+                try:
+                    return func(*alt)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+    # 1) Collect yogas from jd_yoga & jd_raja by scanning for relevant getters
+    yoga_items: list[dict] = []
+    scanned_funcs = []
+
+    def _gather_from_module(mod):
+        names = [n for n in dir(mod)
+                 if callable(getattr(mod, n))
+                 and (("yoga" in n.lower() and n.lower().startswith(("get_", "list_", "detect_", "calc_", "compute_")))
+                      or n.lower() in {"yogas", "getyogas", "rajayogas", "get_rajayogas", "get_raja_yogas"})]
+        for n in names:
+            func = getattr(mod, n, None)
+            if not func:
+                continue
+            if func in scanned_funcs:
+                continue
+            scanned_funcs.append(func)
+            res = _try_call(func, natal_pp)
+            items = _normalise_yoga_output(res)
+            yoga_items.extend(items)
+
+    for _mod in (jd_yoga, jd_raja):
+        _gather_from_module(_mod)
+
+    # Deduplicate by lowercase name while preserving first evidence/effects
+    seen = set()
+    deduped = []
+    for it in yoga_items:
+        key = (it.get("name") or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(it)
+    yoga_items = deduped
+
+    # 2) Doshas from current chart state (combustion, retrograde, graha-yuddha)
+    dosha_items: list[dict] = []
+
+    # combustion
+    for pid in sorted(_combust_set):
+        dosha_items.append({
+            "name": f"Combustion – {PLANET_NAMES.get(pid, pid)}",
+            "evidence": f"{PLANET_NAMES.get(pid, pid)} is reported combust (close to Sun) per library check.",
+            "effects": "Weakens expression/significations of the planet; delays, volatility, lowered support."
+        })
+    # retrograde
+    for pid in sorted(_retro_set):
+        # skip Rahu/Ketu which are always retro by concept
+        if pid in (getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)):
+            continue
+        dosha_items.append({
+            "name": f"Retrograde – {PLANET_NAMES.get(pid, pid)}",
+            "evidence": f"{PLANET_NAMES.get(pid, pid)} is retrograde at birth.",
+            "effects": "Non-linear results, reversals/redo cycles, internalised themes; can be strong yet eccentric."
+        })
+    # graha-yuddha (planetary war) if available
+    gy_pairs = []
+    for func in (getattr(pdrik, "planets_in_graha_yudh", None),
+                 getattr(jd_charts, "planets_in_graha_yudh", None)):
+        if func:
+            try:
+                gy_pairs = func(natal_pp) or []
+                break
+            except Exception:
+                pass
+    for pair in gy_pairs:
+        if not (isinstance(pair, (list, tuple)) and len(pair) == 2):
+            continue
+        winner, loser = pair
+        wname = PLANET_NAMES.get(winner, winner)
+        lname = PLANET_NAMES.get(loser, loser)
+        dosha_items.append({
+            "name": f"Graha-Yuddha (Planetary War): {wname} defeats {lname}",
+            "evidence": f"{wname} is closer to the ecliptic latitude/longitudinal dominance versus {lname} at birth (library reports a war pair).",
+            "effects": f"The winner ({wname}) gains prominence; the loser ({lname}) suffers weakness/obstruction in its portfolios."
+        })
+
+    # 3) Build HTML
+    if not yoga_items and not dosha_items:
+        yoga_dosha_html = (
+            "<div class='mt-4'>"
+            "<h3 class='h6 text-center'>Yogas & Doṣas</h3>"
+            "<p class='text-center mb-1'>No standard yogas or doṣas were detected by the current library checks.</p>"
+            "</div>"
+        )
+    else:
+        parts = ["<div class='mt-4'><h3 class='h6 text-center'>Yogas & Doṣas</h3>"]
+
+        if yoga_items:
+            parts.append("<h4 class='h6 text-center mt-2'>Applicable Yogas</h4>")
+            for it in yoga_items:
+                nm = _stringify(it.get("name"))
+                ev = _stringify(it.get("evidence"))
+                ef = _stringify(it.get("effects"))
+                parts.append(f"<p class='text-center mb-1'><strong>{nm}</strong></p>")
+                if ev:
+                    parts.append(f"<p class='text-center mb-1'>Evidence: {ev}</p>")
+                if ef:
+                    parts.append(f"<p class='text-center mb-2'>Predicted effects: {ef}</p>")
+
+        if dosha_items:
+            parts.append("<h4 class='h6 text-center mt-2'>Applicable Doṣas</h4>")
+            for it in dosha_items:
+                nm = _stringify(it.get("name"))
+                ev = _stringify(it.get("evidence"))
+                ef = _stringify(it.get("effects"))
+                parts.append(f"<p class='text-center mb-1'><strong>{nm}</strong></p>")
+                if ev:
+                    parts.append(f"<p class='text-center mb-1'>Evidence: {ev}</p>")
+                if ef:
+                    parts.append(f"<p class='text-center mb-2'>Predicted effects: {ef}</p>")
+
+        parts.append("</div>")
+        yoga_dosha_html = "".join(parts)
 
     html_out = f"""
 <div class=\"container\"> 
@@ -5275,6 +5512,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {jupiter_aspects_html}
   {venus_aspects_html}
   {saturn_aspects_html}
+  {yoga_dosha_html}
 </div>
 """
     return html_out
