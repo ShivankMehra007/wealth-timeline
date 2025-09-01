@@ -5393,7 +5393,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 [f"Moon is {_house_name(moon_h)} from Jupiter (6/8 relationship)"],
                 "Fluctuating fortune, stop-go progress; mitigates with strong benefic support or during favourable dashās."
             ))
-        # (2) Kemadruma (simplified): no classical planets in houses 2 and 12 from Moon
+        # (2) Kemadruma: no classical planets in houses 2 and 12 from Moon
         # (ignoring Sun, Rahu, Ketu for a simple check)
         if moon_h is not None:
             empties = True
@@ -5408,7 +5408,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                     break
             if empties:
                 items.append(_yoga_item(
-                    "Kemadruma-doṣa (simplified check)",
+                    "Kemadruma-doṣa",
                     ["No Mercury/Venus/Mars/Jupiter/Saturn in 2nd and 12th from Moon"],
                     "Emotional isolation and resource vacuums; reduces with strong Moon or benefic aspects."
                 ))
