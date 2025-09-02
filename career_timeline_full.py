@@ -5871,7 +5871,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         sb_val = _extract_shadbala_val(sb_res, pid)
         sb_bad = (pid in SHAD_THRESH and sb_val is not None and sb_val < SHAD_THRESH[pid])
         weak   = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_bad
-        return weak_html = (
+        return (
                 f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
                 f"{int((sb_val/1020)*100)}%</p>"
             )
