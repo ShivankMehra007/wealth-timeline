@@ -713,7 +713,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md1_note_html = ""
     if md1:
         _s, _e = md1
-        md1_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
+        md1_note_html = f"<p class='text-center mt-2'><strong>Shadbala: {sb_val} The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
 
     reading_html = reading_html.replace("</div>", f"{md1_note_html}{weak_note_html}</div>")
 
@@ -2444,7 +2444,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note inside this block
-    reading_mars_html = reading_mars_html.replace("</div>", f"{md_mars_note_html}{weak_mars_note_html}</div>")
+    reading_mars_html = reading_mars_html.replace("</div>", f"Shadbala:{sb_mars_val} {md_mars_note_html}{weak_mars_note_html}</div>")
     
         # ── Reading based on Mercury (intellect/skills/commerce) ────────────────
     merc_pid = const._MERCURY
