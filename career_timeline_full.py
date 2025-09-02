@@ -5706,6 +5706,233 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         return "".join(parts)
 
     avasthas_html = _render_avastha_block()
+    
+        # ───────────────────────────────────────────────────────────────────────
+    # Mahadasha timeline table (chronological; predictions per planet)
+    # ───────────────────────────────────────────────────────────────────────
+
+    # 1) build the full Vimshottari sequence from (slightly before) birth
+    KETU  = getattr(const, "_KETU", -2)
+    RAHU  = getattr(const, "_RAHU", -1)
+    _ORDER = [KETU, const._VENUS, const._SUN, const._MOON, const._MARS, RAHU, const._JUPITER, const._SATURN, const._MERCURY]
+    _YEARS = {KETU:7, const._VENUS:20, const._SUN:6, const._MOON:10, const._MARS:7, RAHU:18,
+              const._JUPITER:16, const._SATURN:19, const._MERCURY:17}
+    _DAYS_PER_YEAR = 365.2425
+
+    def _md_sequence_from_birth():
+        moon_lon = _get_lon(const._MOON)
+        seg = 360.0 / 27.0
+        nak_idx = int(moon_lon // seg) % 27
+        start_lord = _ORDER[nak_idx % 9]
+        frac = (moon_lon % seg) / seg           # elapsed within birth-nakshatra
+        elapsed_yrs = frac * _YEARS[start_lord]
+        remain_yrs  = _YEARS[start_lord] - elapsed_yrs
+        start_dt = dob - timedelta(days=elapsed_yrs * _DAYS_PER_YEAR)
+        end_dt   = dob + timedelta(days=remain_yrs  * _DAYS_PER_YEAR)
+
+        seq = [(start_lord, start_dt, end_dt)]
+        idx = (_ORDER.index(start_lord) + 1) % 9
+        cur_start, total_yrs = end_dt, remain_yrs
+        # cover ~120 years
+        while total_yrs < 121:
+            lord = _ORDER[idx]
+            dur  = _YEARS[lord]
+            cur_end = cur_start + timedelta(days=dur * _DAYS_PER_YEAR)
+            seq.append((lord, cur_start, cur_end))
+            cur_start, total_yrs = cur_end, total_yrs + dur
+            idx = (idx + 1) % 9
+        # keep only MDs that overlap life-span window from birth onward
+        return [(p, s, e) for (p, s, e) in seq if e > dob]
+
+    # 2) tiny helpers used by the prediction engine
+    _GOOD_HOUSES = {1,4,5,7,9,10,11,2}           # 1-based
+    _BAD_HOUSES  = {6,8,12}                      # 1-based
+
+    _ASPECT_DELTAS = {
+        const._SUN:     {6},             # 7th
+        const._MOON:    {6},
+        const._MERCURY: {6},
+        const._VENUS:   {6},
+        const._MARS:    {3,6,7},         # 4th, 7th, 8th
+        const._JUPITER: {4,6,8},         # 5th, 7th, 9th
+        const._SATURN:  {2,6,9},         # 3rd, 7th, 10th
+        RAHU:           {4,6,8},
+        KETU:           {4,6,8},
+    }
+
+    def _house_of(pid: int) -> int:
+        # 0-based house index (whole sign); reliable even if p2h lacks an entry
+        try:
+            sidx = int(natal_pp[pid + 1][1][0])
+        except Exception:
+            sidx = _sign_of_longitude(_get_lon(pid))
+        return (sidx - asc_sign) % 12
+
+    def _sign_of(pid: int) -> int:
+        try:
+            return int(natal_pp[pid + 1][1][0])
+        except Exception:
+            return _sign_of_longitude(_get_lon(pid))
+
+    def _dignity(pid: int) -> int:
+        return _dignity_level(pid, _sign_of(pid))  # +3 exalt … –2 debil
+
+    def _conj(a: int, b: int) -> bool:
+        return _house_of(a) == _house_of(b)
+
+    def _aspects(from_pid: int, to_house_idx0: int) -> bool:
+        h_from = _house_of(from_pid)
+        delta  = (to_house_idx0 - h_from) % 12
+        return delta in _ASPECT_DELTAS.get(from_pid, {6})
+
+    def _touches(a: int, target_house_idx0: int) -> bool:
+        return (_house_of(a) == target_house_idx0) or _aspects(a, target_house_idx0)
+
+    def _drekkana_timing(pid: int) -> str:
+        """Return 'early/middle/late' for the MD, reversed if retrograde."""
+        deg_in_sign = _get_lon(pid) % 30.0
+        band = "early" if deg_in_sign < 10 else "middle" if deg_in_sign < 20 else "late"
+        if pid in _retro_set:
+            band = {"early":"late", "middle":"middle", "late":"early"}[band]
+        return band
+
+    def _weak_note(pid: int) -> str:
+        # Avasthas + Shadbala threshold
+        sb_val = _extract_shadbala_val(sb_res, pid)
+        sb_bad = (pid in SHAD_THRESH and sb_val is not None and sb_val < SHAD_THRESH[pid])
+        weak   = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_bad
+        return (" <br><span class='text-muted'><strong>Note:</strong> "
+                "The above predictions may not manifest very strongly, since the respective graha is weak.</span>"
+                ) if weak else ""
+
+    # for rule (1) “associated with the 9th or 10th lord”
+    lord9 = _SIGN_LORD[(asc_sign + 8) % 12]
+    lord10 = _SIGN_LORD[(asc_sign + 9) % 12]
+
+    # 3) planet-specific prediction builder, respecting your clauses verbatim (re-worded)
+    def _md_prediction(pid: int) -> str:
+        name = PLANET_NAMES.get(pid, str(pid))
+        h0   = _house_of(pid)               # 0-based
+        h    = h0 + 1                       # 1-based
+        tier = _dignity(pid)
+        strong_flags = [
+            tier >= 2,                                          # exalt/own
+            tier == 1,                                          # friend
+            h in _GOOD_HOUSES,
+            any(_touches(b, h0) for b in {const._JUPITER, const._VENUS, const._MERCURY, const._MOON}),   # benefic touch
+            _touches(lord9,  h0) or _touches(lord10, h0),       # association/aspect with 9L/10L
+        ]
+        weak_flags = [
+            tier <= -1,                                         # enemy/debil
+            pid in _combust_set,
+            h in _BAD_HOUSES,
+            any(_touches(m, h0) for m in {const._SUN, const._MARS, const._SATURN, RAHU, KETU}),          # malefic touch
+        ]
+        favourable = sum(bool(x) for x in strong_flags) >= sum(bool(x) for x in weak_flags)
+
+        # short helpers used by some conditional clauses
+        def _is_kendra_or_3rd():
+            return h in {1,4,7,10,3}
+        def _owns_house(pid_test: int, house_no: int) -> bool:
+            return _SIGN_LORD[(asc_sign + (house_no-1)) % 12] == pid_test
+
+        # “When favourable / when adverse” per planet
+        text = []
+        if pid == const._SUN:
+            if favourable:
+                text.append("Wealth builds up, comforts rise, and authority notices you; status climbs.")
+                # extra conditions
+                if _touches(_SIGN_LORD[(asc_sign+4)%12], _house_of(pid)):  # 5th lord touches Sun
+                    text.append("Childbirth is likely because the Sun connects with the 5th lord.")
+                if _touches(_SIGN_LORD[(asc_sign+1)%12], _house_of(pid)) or _touches(_SIGN_LORD[(asc_sign+3)%12], _house_of(pid)):
+                    text.append("Vehicles/comforts through links to the 2nd/4th lords.")
+            else:
+                text.append("Losses, royal disfavour, displacement, damaged status, and strain with the father are likely.")
+        elif pid == const._MOON:
+            if favourable:
+                base = "Renown grows; prosperity and auspicious events at home; support from authorities; plans complete; status improves."
+                if h == 2:
+                    base += " The Moon placed in the 2nd tends to be especially fruitful."
+                text.append(base)
+            else:
+                text.append("Wealth ebbs with physical and mental strain, issues with servants, and worries tied to the mother or authority.")
+        elif pid == const._MARS:
+            if favourable:
+                text.append("Rank improves; gains from land, vehicles and clothing; foreign gains; generally positive for siblings.")
+                if _is_kendra_or_3rd():
+                    text.append("With Mars in a kendra or the 3rd: strong wins and comforts early in the daśā, tapering later.")
+            else:
+                text.append("Face takes a hit; opponents dominate; accidents or illnesses are a risk.")
+        elif pid == RAHU:
+            if favourable:
+                text.append("Comforts and prosperity increase; religion or philosophy attracts; ceremonies and honours in foreign settings are likely.")
+            else:
+                text.append("Displacement, mental unrest, and risks to spouse or child may occur, with losses and unclean environments.")
+            text.append("Rahu tends to be more comfortable in the middle stretch of its daśā.")
+        elif pid == const._JUPITER:
+            if favourable:
+                text.append("Status and comforts expand; vehicles, worship, and support from spouse and children show up; auspicious results multiply.")
+            else:
+                text.append("Early setbacks with travel/pilgrimage or loss of cattle, then the period improves as it progresses.")
+        elif pid == const._SATURN:
+            if favourable:
+                text.append("Favours from authority, study and wealth, rise in status and physical comforts.")
+                if (_touches(const._JUPITER, h0) or _touches(const._VENUS, h0)) or (h in {1,4,5,7,9,10,11}) or (_sign_of(pid) in {8,11}):  # Jupiter signs Dhanu/Meena = 8/11 (0-based)
+                    text.append("Saturn is especially constructive here when joined/aspected by benefics, in kendra/trine/11th, or in Jupiter’s signs.")
+            else:
+                text.append("Displacement, fear, losses to parents, illness to spouse/child, inauspicious events, even confinement can occur.")
+        elif pid == const._MERCURY:
+            if favourable:
+                text.append("Comforts and wealth rise; reputation and learning improve; business pays; health and diet stabilize.")
+            else:
+                text.append("Wrath of authority, anxiety, disputes with relatives, travel under constraint, urinary issues and theft/fire risks.")
+            text.append("With Mercury the start is generally smoother, royal favour peaks mid-period, and results decline toward the end.")
+        elif pid == KETU:
+            if favourable:
+                text.append("Desired objects arrive; leadership of a locality; foreign travel and varied comforts.")
+            else:
+                text.append("Confinement, loss of dear ones, displacement, illness and painful company.")
+            # house-timing pattern for Ketu
+            if h in {3,6,11}:
+                text.append("When Ketu is in the 3rd/6th/11th: rise comes early, fears surface mid-period, and distant travel tends to close the daśā.")
+        elif pid == const._VENUS:
+            if favourable:
+                text.append("Royal polish: vehicles, clothing, ornaments, home, prosperity, marriage, military preferment and gains from many sides.")
+            else:
+                text.append("Pushback from family, issues through women, professional reversals or separations.")
+            # illness clause if Venus owns 2nd or 7th
+            if _owns_house(const._VENUS, 2) or _owns_house(const._VENUS, 7):
+                text.append("Because Venus owns the 2nd or 7th here, health issues during the Venus daśā are a classical caution.")
+        else:
+            # safety net for any non-standard ids
+            text.append("Results follow the planet’s strength, placement and associations.")
+        
+        # “early/middle/late” timing from Drekkana
+        text.append(f"Expect the key results to surface in the <b>{_drekkana_timing(pid)}</b> part of this daśā.")
+        # embed weakness note if applicable
+        return " ".join(text) + _weak_note(pid)
+
+    # 4) build the rows & render as a compact table
+    md_rows = []
+    for lord, start_dt, end_dt in _md_sequence_from_birth():
+        md_rows.append({
+            "Period": f"{start_dt:%Y-%m-%d} – {end_dt:%Y-%m-%d}",
+            "Planet": PLANET_NAMES.get(lord, str(lord)),
+            "Predictions": _md_prediction(lord),
+        })
+
+    md_df = pd.DataFrame(md_rows, columns=["Period", "Planet", "Predictions"])
+    md_table_html = md_df.to_html(index=False, escape=False,
+                                  classes="table table-sm table-striped")
+
+    mahadasha_html = (
+        "<div class='mt-4'>"
+        "<h3 class='h6 text-center'>Mahadasha Timeline & Predictive Reading</h3>"
+        f"{md_table_html}"
+        "</div>"
+    )
+    # ⬇️ make sure you concatenate/append `mahadasha_html` to whatever HTML you already return/render
+    # e.g., if you collect blocks in `extra_html`, do:  extra_html += mahadasha_html
 
     html_out = f"""
 <div class=\"container\"> 
@@ -5758,6 +5985,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   {saturn_aspects_html}
   {yogas_html}
   {avasthas_html}
+  {mahadasha_html}
 </div>
 """
     return html_out
