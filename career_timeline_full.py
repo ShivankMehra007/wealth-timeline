@@ -618,36 +618,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         return None
 
     def _extract_shadbala_val(res, pid: int):
-        if res is None:
-            return None
-        if isinstance(res, dict):
-            val = res.get(pid, res.get(str(pid)))
-            if isinstance(val, (int, float)):
-                return float(val)
-            if isinstance(val, (list, tuple)) and val:
-                for item in val:
-                    if isinstance(item, (int, float)):
-                        return float(item)
-                try:
-                    return float(val[0])
-                except Exception:
-                    return None
-            try:
-                return float(val)
-            except Exception:
-                return None
-        if isinstance(res, (list, tuple)):
-            for it in res:
-                if isinstance(it, (list, tuple)) and len(it) >= 2:
-                    k, v = it[0], it[1]
-                    if k == pid or str(k) == str(pid):
-                        if isinstance(v, (int, float)):
-                            return float(v)
-                        try:
-                            return float(v)
-                        except Exception:
-                            return None
-        return None
+        return jd_strength.shad_bala(jd_birth, place)[6][pid]
 
     sb_res = _get_shadbala_result()
     sb_val = _extract_shadbala_val(sb_res, lagna_lord_pid)
@@ -1104,7 +1075,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach the MD line and the weakness note directly inside this block
-    reading4_html = reading4_html.replace("</div>", f"{md4_note_html}{weak4_note_html}</div>")
+    reading4_html = reading4_html.replace("</div>", f"Shadbala: {sb4_val} {md4_note_html}{weak4_note_html}</div>")
     
         # ── Reading based on 5th-house lord (children/intellect/creativity) ─────
     h5_sign = (lagna_sign + 4) % 12
