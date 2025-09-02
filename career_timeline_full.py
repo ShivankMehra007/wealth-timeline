@@ -618,7 +618,20 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         return None
 
     def _extract_shadbala_val(res, pid: int):
-        return jd_strength.shad_bala(jd_birth, place)[6][pid]
+        if pid = const._SUN:
+            return jd_strength.shad_bala(jd_birth, place)[6][0]
+        elif pid = const._MOON:
+            return jd_strength.shad_bala(jd_birth, place)[6][1]
+        elif pid = const._MARS:
+            return jd_strength.shad_bala(jd_birth, place)[6][2]
+        elif pid = const._MERCURY:
+            return jd_strength.shad_bala(jd_birth, place)[6][3]
+        elif pid = const._JUPITER:
+            return jd_strength.shad_bala(jd_birth, place)[6][4]
+        elif pid = const._VENUS:
+            return jd_strength.shad_bala(jd_birth, place)[6][5]
+        else:
+            return jd_strength.shad_bala(jd_birth, place)[6][6]
 
     sb_res = _get_shadbala_result()
     sb_val = _extract_shadbala_val(sb_res, lagna_lord_pid)
