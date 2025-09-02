@@ -16,24 +16,44 @@ BASE = """<!doctype html>
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Vedic Output</title>
+    <title>Vedic Chart Reader</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <style>
+      :root {
+        --heading-grad: linear-gradient(135deg,#1f4aa8 0%, #7b2cbf 60%, #b5179e 100%);
+      }
       body { padding: 1rem; }
       pre { white-space: pre-wrap; word-break: break-word; }
       table { font-size: 0.92rem; }
       .container { max-width: 1100px; }
       .help { font-size: .9rem; color: #666; }
+      .brand {
+        background: var(--heading-grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-weight: 800;
+        letter-spacing: .3px;
+      }
+      .subtle { color:#555; }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1 class="h4 mb-3">Navagraha Output</h1>
-      <div class="row">
-        <div class="col-lg-4">
-          <form method="post" action="/timeline" class="card card-body gap-2">
+      <header class="mb-4 text-center">
+        <h1 class="display-6 brand mb-1">Vedic Chart Reader</h1>
+        <p class="subtle mb-0">
+          Compute your natal placements and get structured readings (lords, grahas, dashas, yogas and more).
+          Enter birth details on the left; an overview appears on the right. Results render below.
+        </p>
+      </header>
+
+      <!-- Inputs (left) + Intro (right) -->
+      <div class="row g-4 align-items-stretch">
+        <div class="col-lg-5">
+          <form method="post" action="/timeline" class="card card-body gap-2 shadow-sm">
             <div class="help mb-2">
               Enter birth details. Latitude/Longitude preferred; timezone like <code>+05:30</code>.
             </div>
@@ -76,7 +96,27 @@ BASE = """<!doctype html>
             <button type="submit" class="btn btn-primary mt-2">Compute</button>
           </form>
         </div>
-        <div class="col-lg-8">
+
+        <div class="col-lg-7">
+          <div class="card card-body h-100 bg-light border-0 shadow-sm">
+            <h2 class="h5 mb-2">What you’ll see</h2>
+            <p class="mb-2">
+              This tool uses classical Jyotiṣa rules with PyJHora under the hood to assemble a readable report.
+              It summarises placements, houses, strengths/avasthas, yogas/doshas, and dashā timelines—then
+              rewrites the results in plain language. Treat the output as guidance, not certainty.
+            </p>
+            <ul class="mb-0 small">
+              <li>Use decimal latitude/longitude when possible for accuracy.</li>
+              <li>Timezone accepts <code>+HH:MM</code>, a number (e.g. <code>5.5</code>), or an IANA zone.</li>
+              <li>Results appear below this section as tables and narrative blocks you can copy or print.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output area -->
+      <div class="row mt-4">
+        <div class="col-12" id="output">
           {{ body|safe }}
         </div>
       </div>
