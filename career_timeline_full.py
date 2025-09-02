@@ -698,7 +698,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     if md1:
         _s, _e = md1
         md1_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
-
+    weak_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val/1020)*100)}%</p>"
+        )
     reading_html = reading_html.replace("</div>", f"{md1_note_html}{weak_note_html}</div>")
 
         # ── Reading based on 2nd‑house lord (wealth significator) ──────────────
@@ -836,7 +839,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     if md2:
         _s2, _e2 = md2
         md2_note_html = f"<p class='text-center mt-2'><strong>The above effects would be more prominent in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%m-%d} – {_e2:%Y-%m-%d}</p>"
-
+    weak2_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb2_val/1020)*100)}%</p>"
+        )
     reading2_html = reading2_html.replace("</div>", f"{md2_note_html}{weak2_note_html}</div>")
 
     # ── Reading based on 3rd‑house lord (siblings/effort) ──────────────
@@ -964,7 +970,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     weak3 = (h3_lord_pid in avs["bala"]) or (h3_lord_pid in avs["mrita"]) or (h3_lord_pid in avs["sushupti"]) or sb3_weak
     if weak3:
         weak3_note_html = f"<p class='text-center mt-2'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {h3_lord_name} is weak</p>"
-
+    weak3_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb3_val/1020)*100)}%</p>"
+        )
     reading3_html = reading3_html.replace("</div>", f"{md3_note_html}{weak3_note_html}</div>")
     
         # ── Reading based on 4th-house lord (home/mother/real-estate/comforts) ──
@@ -1086,9 +1095,12 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             f"<p class='text-center mt-2'><strong>Note:</strong> "
             f"The above predictions may not manifest very strongly, since the {h4_lord_name} is weak</p>"
         )
-
+    weak4_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb4_val/1020)*100)}%</p>"
+        )
     # Attach the MD line and the weakness note directly inside this block
-    reading4_html = reading4_html.replace("</div>", f"Shadbala: {sb4_val} {md4_note_html}{weak4_note_html}</div>")
+    reading4_html = reading4_html.replace("</div>", f"{md4_note_html}{weak4_note_html}</div>")
     
         # ── Reading based on 5th-house lord (children/intellect/creativity) ─────
     h5_sign = (lagna_sign + 4) % 12
@@ -1228,6 +1240,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and weakness note inside this block
+    weak5_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb5_val/1020)*100)}%</p>"
+        )
     reading5_html = reading5_html.replace("</div>", f"{md5_note_html}{weak5_note_html}</div>")
     
         # ── Reading based on 6th-house lord (enemies/health/service) ─────────────
@@ -1364,6 +1380,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note directly inside this block
+    weak6_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb6_val/1020)*100)}%</p>"
+        )
     reading6_html = reading6_html.replace("</div>", f"{md6_note_html}{weak6_note_html}</div>")
     
         # ── Reading based on 7th-house lord (marriage/partnerships) ─────────────
@@ -1472,6 +1492,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach the MD line and the weakness note directly inside this block
+    weak7_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb7_val/1020)*100)}%</p>"
+        )
     reading7_html = reading7_html.replace("</div>", f"{md7_note_html}{weak7_note_html}</div>")
     
         # ── Reading based on 8th-house lord (longevity/obstructions/hidden) ─────
@@ -1609,6 +1633,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note inside this block
+    weak8_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb8_val/1020)*100)}%</p>"
+        )
     reading8_html = reading8_html.replace("</div>", f"{md8_note_html}{weak8_note_html}</div>")
     
         # ── Reading based on 9th-house lord (fortune/dharma) ─────────────────────
@@ -1719,6 +1747,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and weakness note inside this block
+    weak9_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb9_val/1020)*100)}%</p>"
+        )
     reading9_html = reading9_html.replace("</div>", f"{md9_note_html}{weak9_note_html}</div>")
     
         # ── Reading based on 10th-house lord (career/status/karma) ─────────────
@@ -1834,6 +1866,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note directly inside this block
+    weak10_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb10_val/1020)*100)}%</p>"
+        )
     reading10_html = reading10_html.replace("</div>", f"{md10_note_html}{weak10_note_html}</div>")
     
         # ── Reading based on 11th-house lord (income/gains/networks) ────────────
@@ -1952,6 +1988,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note directly inside this block
+    weak11_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb11_val/1020)*100)}%</p>"
+        )
     reading11_html = reading11_html.replace("</div>", f"{md11_note_html}{weak11_note_html}</div>")
     
         # ── Reading based on 12th-house lord (loss/foreign/expenses/isolation) ───
@@ -2066,6 +2106,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and weakness note inside this block
+    weak12_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb12_val/1020)*100)}%</p>"
+        )
     reading12_html = reading12_html.replace("</div>", f"{md12_note_html}{weak12_note_html}</div>")
     
         # ── Reading based on the Sun (graha-specific) ───────────────────────────
@@ -2177,6 +2221,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the Sun-only weakness note inside this block
+    weak_sun_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_sun_val/1020)*100)}%</p>"
+        )
     reading_sun_html = reading_sun_html.replace("</div>", f"{md_sun_note_html}{weak_sun_note_html}</div>")
     
         # ── Reading based on the Moon (graha-specific) ─────────────────────────
@@ -2326,6 +2374,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and Moon-only weakness note
+    weak_moon_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_moon_val/1020)*100)}%</p>"
+        )
     reading_moon_html = reading_moon_html.replace("</div>", f"{md_moon_note_html}{weak_moon_note_html}</div>")
     
         # ── Reading based on Mars (Kuja) ─────────────────────────────────────────
@@ -2428,6 +2480,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note inside this block
+    weak_mars_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_mars_val/1020)*100)}%</p>"
+        )
     reading_mars_html = reading_mars_html.replace("</div>", f"{md_mars_note_html}{weak_mars_note_html}</div>")
     
         # ── Reading based on Mercury (intellect/skills/commerce) ────────────────
@@ -2534,6 +2590,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and weakness note inside this block
+    weak_mer_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_merc/1020)*100)}%</p>"
+        )
     reading_mercury_html = reading_mercury_html.replace("</div>", f"{md_mer_note_html}{weak_mer_note_html}</div>")
     
         # ── Reading based on Jupiter (Guru) ─────────────────────────────────────
@@ -2635,6 +2695,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and the weakness note directly inside this block
+    weak_j_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_j_val/1020)*100)}%</p>"
+        )
     reading_jupiter_html = reading_jupiter_html.replace("</div>", f"{md_j_note_html}{weak_j_note_html}</div>")
     
         # ── Reading based on Venus (Śukra) ──────────────────────────────────────
@@ -2736,6 +2800,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line + weakness note within this block
+    weak_v_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_v_val/1020)*100)}%</p>"
+        )
     reading_venus_html = reading_venus_html.replace("</div>", f"{md_v_note_html}{weak_v_note_html}</div>")
     
         # ── Reading based on Saturn (Śani) ──────────────────────────────────────
@@ -2853,6 +2921,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line + weakness note within this block
+    weak_s_note_html = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_s_val/1020)*100)}%</p>"
+        )
     reading_saturn_html = reading_saturn_html.replace("</div>", f"{md_s_note_html}{weak_s_note_html}</div>")
     
         # ── Reading based on Rahu (Rāhu) ───────────────────────────────────────
@@ -2993,6 +3065,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line + weakness note within this block
+    weak_r_note_html = ""
     reading_rahu_html = reading_rahu_html.replace("</div>", f"{md_r_note_html}{weak_r_note_html}</div>")
     
         # ── Reading based on Ketu (moksha-karaka / detachment) ───────────────────
@@ -3167,6 +3240,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
 
     # Attach MD line and weakness note directly to Ketu block
+    weakK_note_html = ""
     reading_ketu_html = reading_ketu_html.replace("</div>", f"{mdK_note_html}{weakK_note_html}</div>")
     
         # ── Readings: planets relative to the Moon (Chandra-lagna positions) ─────
@@ -3195,8 +3269,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         sb_val = _extract_shadbala_val(sb_res, pid)
         sb_weak = (pid in SHAD_THRESH) and (sb_val is not None) and (sb_val < SHAD_THRESH[pid])
         weak = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_weak
-        return (f"<p class='text-center mt-2'><strong>Note:</strong> "
-                f"The above predictions may not manifest very strongly, since the {pname} is weak</p>") if weak else ""
+        return (f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val/1020)*100)}%</p>"
+        )
 
     def _md_note_for(pid: int, pname: str) -> str:
         md = _md_period_for(pid)
@@ -3357,10 +3432,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         return (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_weak
 
     def _weak_note_line(name: str, pid: int) -> str:
+        sb_val = _extract_shadbala_val(sb_res, pid)
         return (
-            f"<p class='text-center mt-2'><strong>Note:</strong> "
-            f"The above predictions may not manifest very strongly, since the {name} is weak</p>"
-            if _is_weak(pid) else ""
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val/1020)*100)}%</p>"
         )
 
     def _md_line(pid: int, name: str) -> str:
@@ -3617,7 +3692,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 f"<p class='text-center mt-2'><strong>Note:</strong> "
                 f"The above predictions may not manifest very strongly, since the {name} is weak</p>"
             )
-
+        weak_note = (
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val/1020)*100)}%</p>"
+        )
         return html.replace("</div>", f"{md_note}{weak_note}</div>")
 
     # Sign → bullet lines (reworded, faithful to source; not sugar-coated)
@@ -3944,10 +4022,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
         )
         weak_html = (
-            f"<p class='text-center mt-2'><strong>Note:</strong> "
-            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
-        ) if is_weak else ""
-
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val_x/1020)*100)}%</p>"
+        )
         block = (
             f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects the Sun in {grp_label}:</em></p>"
             + "".join(f"<p class='text-center mb-1'>• {t}</p>" for t in lines)
@@ -4139,9 +4216,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
         )
         weak_html = (
-            f"<p class='text-center mt-2'><strong>Note:</strong> "
-            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
-        ) if is_weak else ""
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val_x/1020)*100)}%</p>"
+        )
 
         block = (
             f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects the Moon in "
@@ -4316,9 +4393,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             (sb_val_x is not None and asp_pid in SHAD_THRESH and sb_val_x < SHAD_THRESH[asp_pid])
         )
         weak_html = (
-            f"<p class='text-center mt-2'><strong>Note:</strong> "
-            f"The above predictions may not manifest very strongly, since the {PLANET_NAMES[asp_pid]} is weak</p>"
-        ) if is_weak else ""
+        f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+        f"{int((sb_val_x/1020)*100)}%</p>"
+        )
 
         block = (
             f"<p class='text-center mb-1'><em>When {PLANET_NAMES[asp_pid]} aspects Mars in "
@@ -4564,8 +4641,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
         if is_weak_aspector:
             block.append(
-                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
-            )
+            weak_html = (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((sb_val_x/1020)*100)}%</p>"
+            ))
 
         sub_sections_mercury.append("".join(block))
 
@@ -4802,8 +4881,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
         if is_weak_aspector:
             block.append(
-                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
-            )
+                weak_html = (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((sb_val_x/1020)*100)}%</p>"
+            ))
 
         sub_sections_jupiter.append(''.join(block))
 
@@ -5040,8 +5121,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
         if is_weak_aspector:
             block.append(
-                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
-            )
+                weak_html = (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((sb_val_x/1020)*100)}%</p>"
+            ))
 
         sub_sections_venus.append(''.join(block))
 
@@ -5194,8 +5277,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         )
         if is_weak_aspector:
             block.append(
-                f"<p class='text-center'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {PLANET_NAMES.get(aspector_pid)} is weak</p>"
-            )
+                weak_html = (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((sb_val_x/1020)*100)}%</p>"
+            ))
 
         sub_sections_sat.append(''.join(block))
 
@@ -5655,9 +5740,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         v = _extract_shadbala_val(_get_shadbala_result() if ' _get_shadbala_result' in globals() else sb_res, pid)
         sb_weak = (pid in SHAD_THRESH) and (v is not None) and (v < SHAD_THRESH[pid])
         weak = (pid in avs.get("bala", set())) or (pid in avs.get("mrita", set())) or (pid in avs.get("sushupti", set())) or sb_weak
-        if weak:
-            return f"<p class='text-center mt-1'><strong>Note:</strong> The above predictions may not manifest very strongly, since the {_planet_name(pid)} is weak</p>"
-        return ""
+        return (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((v/1020)*100)}%</p>"
+            )
 
     def _render_avastha_block() -> str:
         planets = [const._SUN, const._MOON, const._MARS, const._MERCURY, const._JUPITER, const._VENUS, const._SATURN]
@@ -5785,9 +5871,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         sb_val = _extract_shadbala_val(sb_res, pid)
         sb_bad = (pid in SHAD_THRESH and sb_val is not None and sb_val < SHAD_THRESH[pid])
         weak   = (pid in avs["bala"]) or (pid in avs["mrita"]) or (pid in avs["sushupti"]) or sb_bad
-        return (" <br><span class='text-muted'><strong>Note:</strong> "
-                "The above predictions may not manifest very strongly, since the respective graha is weak.</span>"
-                ) if weak else ""
+        return weak_html = (
+                f"<p class='text-center mt-2'><strong>Prediction Strength:</strong> "
+                f"{int((sb_val/1020)*100)}%</p>"
+            )
 
     # for rule (1) “associated with the 9th or 10th lord”
     lord9 = _SIGN_LORD[(asc_sign + 8) % 12]
