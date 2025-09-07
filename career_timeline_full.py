@@ -6011,7 +6011,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
   <style>
     /* center-align entire table and all headers/cells */
     .table {{ margin-left: auto; margin-right: auto; }}
-    .table th, .table td {{ text-align: center !important; vertical-align: middle; }}
+    .table th, .table td {{ text-align: left !important; vertical-align: middle; }}
   </style>
   <div class=\"table-responsive\"> 
     {table_html}
