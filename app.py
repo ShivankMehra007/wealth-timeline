@@ -43,7 +43,7 @@ BASE = """<!doctype html>
   <body>
     <div class="container">
       <header class="mb-4 text-center">
-        <h1 class="display-6 brand mb-1">Vedic Chart Reader</h1>
+        <h1 class="display-6 brand mb-1">Free Astrology Chart & Predictions</h1>
         <p class="subtle mb-0">
           Compute your natal placements and get structured readings (lords, grahas, dashas, yogas and more).
           Enter birth details on the left; an overview appears on the right. Results render below.
