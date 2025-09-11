@@ -4997,7 +4997,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         #    s, e = mdv
         #    block.append(
         #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
-            )
+        #    )
 
         # Weakness check for the aspecting graha (avasthas + shadbala)
         sbv = _extract_shadbala_val(sb_res, aspector_pid)
