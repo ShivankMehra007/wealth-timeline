@@ -384,12 +384,12 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         motion = "Retrograde" if pid in _retro_set or pid in (getattr(const, "_RAHU", -1), getattr(const, "_KETU", -2)) else "Direct"
 
         rows.append({
-            "planet": PLANET_NAMES.get(pid, str(pid)),
-            "sign": sign_name,
-            "house": house_no,
-            "house_lord": house_lord,
-            "longitude": longitude_str,
-            "nakshatra": nak_name,
+            "Planet": PLANET_NAMES.get(pid, str(pid)),
+            "Sign": sign_name,
+            "House": house_no,
+            "House Lord": house_lord,
+            "Longitude": longitude_str,
+            "Nakshatra": nak_name,
             "pada": pada,
             "motion": motion,
         })
@@ -770,7 +770,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "With your 2nd house lord placed in the 6th house, your chart indicates a unique blend of wealth and challenge: you have the capacity to steadily accumulate wealth, yet this often comes through situations involving conflict, competition, or overcoming obstacles. Enemies, rivals, and even litigation may paradoxically open doors to financial gain or strengthen your position. This placement empowers you to destroy opposition, turn adversities into opportunities, and ultimately build prosperity by engaging directly with challenges that others might shy away from. It shows a life path where wealth, victory over difficulties, and the handling of disputes are closely interlinked.",
         ]
         if has_malefic_assoc:
-            reading2_lines.append("However, you 2nd-house lord also has a malefic association. This could lead to loss of wealth, and disease of anal region and breast.")
+            reading2_lines.append("However, your 2nd-house lord also has a malefic association. This could lead to loss of wealth, and disease of anal region and breast.")
     elif h2l_house_no == 7:
         reading2_lines += [
             "With your 2nd house lord placed in the 7th house, you are likely to have a strong sensuous nature and find that your spouse plays a significant role in supporting or contributing to your income, often pointing to a partner who brings financial gain or is actively involved in money-earning activities. At the same time, this placement can create a tendency for both you and your spouse to be drawn toward outside attractions, making the relationship vulnerable to temptations or adultery if not handled with awareness and trust.",
@@ -798,7 +798,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "With your 2nd house lord positioned in the 12th house, you are a person of courage and labor, willing to strive hard even when life places challenges before you. Yet, this placement suggests that material gains may often slip away or be lost, and the flow of wealth may feel uncertain. Comfort and support from your eldest child may not be as fulfilling or accessible as desired, adding a sense of distance in that bond. Still, the combination instills resilience and determination, teaching you to draw strength from effort rather than from easy comfort.",
         ]
         if is_h2_benefic:
-            reading2_lines.append("Since you 2nd house-lord is a natural benefic and situated in the 12th, you have a strong chance of becoming a renowned trader.")
+            reading2_lines.append("Since your 2nd house-lord is a natural benefic and situated in the 12th, you have a strong chance of becoming a renowned trader.")
 
     reading2_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 2nd-house lord</h3>"
@@ -5868,9 +5868,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             text.append("Results follow the planet’s strength, placement and associations.")
         
         # “early/middle/late” timing from Drekkana
-        text.append(f"Expect the key results to surface in the <b>{_drekkana_timing(pid)}</b> part of this daśā.")
+        #text.append(f"Expect the key results to surface in the <b>{_drekkana_timing(pid)}</b> part of this daśā.")
         # embed weakness note if applicable
-        return " ".join(text) + _weak_note(pid)
+        return " ".join(text)
 
     # 4) build the rows & render as a compact table
     md_rows = []
