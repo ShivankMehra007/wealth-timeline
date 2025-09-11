@@ -390,8 +390,8 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "House Lord": house_lord,
             "Longitude": longitude_str,
             "Nakshatra": nak_name,
-            "pada": pada,
-            "motion": motion,
+            "Pada": pada,
+            "Motion": motion,
         })
 
         df = pd.DataFrame(rows, columns=["Planet","Sign","House","House Lord","Longitude","Nakshatra","Pada","Motion"])
@@ -684,7 +684,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md1_note_html = ""
     if md1:
         _s, _e = md1
-        md1_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%mmm-%d} – {_e:%Y-%mmm-%d}</p>"
+        md1_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {lagna_lord_name}:</strong> {_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
     weak_note_html = (
         f"<p class='text-left mt-2'><strong>Prediction Strength:</strong> "
         f"{int((sb_val/1020)*100)}%</p>"
@@ -821,7 +821,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md2_note_html = ""
     if md2:
         _s2, _e2 = md2
-        md2_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%mmm-%d} – {_e2:%Y-%mmm-%d}</p>"
+        md2_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {h2_lord_name}:</strong> {_s2:%Y-%m-%d} – {_e2:%Y-%m-%d}</p>"
     weak2_note_html = (
         f"<p class='text-left mt-2'><strong>Prediction Strength:</strong> "
         f"{int((sb2_val/1020)*100)}%</p>"
@@ -939,7 +939,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md3_note_html = ""
     if md3:
         _s3, _e3 = md3
-        md3_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {h3_lord_name}:</strong> {_s3:%Y-%mmm-%d} – {_e3:%Y-%mmm-%d}</p>"
+        md3_note_html = f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {h3_lord_name}:</strong> {_s3:%Y-%m-%d} – {_e3:%Y-%m-%d}</p>"
 
     # Weakness note for 3rd‑house lord (Avasthas & Shadbala)
     weak3_note_html = ""
@@ -1048,7 +1048,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md4_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h4_lord_name}:</strong> "
-            f"{_s4:%Y-%mmm-%d} – {_e4:%Y-%mmm-%d}</p>"
+            f"{_s4:%Y-%m-%d} – {_e4:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 4th-house lord (Avasthas & Śaḍbala)
@@ -1188,7 +1188,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md5_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h5_lord_name}:</strong> "
-            f"{_s5:%Y-%mmm-%d} – {_e5:%Y-%mmm-%d}</p>"
+            f"{_s5:%Y-%m-%d} – {_e5:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 5th-house lord (Avasthas & Śaḍbala)
@@ -1325,7 +1325,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md6_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h6_lord_name}:</strong> "
-            f"{_s6:%Y-%mmm-%d} – {_e6:%Y-%mmm-%d}</p>"
+            f"{_s6:%Y-%m-%d} – {_e6:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 6th-house lord (Avasthas & Śaḍbala)
@@ -1429,7 +1429,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md7_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h7_lord_name}:</strong> "
-            f"{_s7:%Y-%mmm-%d} – {_e7:%Y-%mmm-%d}</p>"
+            f"{_s7:%Y-%m-%d} – {_e7:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 7th-house lord (Avasthas & Śaḍbala)
@@ -1575,7 +1575,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md8_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h8_lord_name}:</strong> "
-            f"{_s8:%Y-%mmm-%d} – {_e8:%Y-%mmm-%d}</p>"
+            f"{_s8:%Y-%m-%d} – {_e8:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 8th-house lord (Avasthas & Śaḍbala)
@@ -1674,7 +1674,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md9_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h9_lord_name}:</strong> "
-            f"{_s9:%Y-%mmm-%d} – {_e9:%Y-%mmm-%d}</p>"
+            f"{_s9:%Y-%m-%d} – {_e9:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 9th-house lord (Avasthas & Śaḍbala)
@@ -1785,7 +1785,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md10_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h10_lord_name}:</strong> "
-            f"{_s10:%Y-%mmm-%d} – {_e10:%Y-%mmm-%d}</p>"
+            f"{_s10:%Y-%m-%d} – {_e10:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 10th-house lord (Avasthas & Śaḍbala)
@@ -1898,7 +1898,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md11_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h11_lord_name}:</strong> "
-            f"{_s11:%Y-%mmm-%d} – {_e11:%Y-%mmm-%d}</p>"
+            f"{_s11:%Y-%m-%d} – {_e11:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 11th-house lord (Avasthas & Śaḍbala)
@@ -2005,7 +2005,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md12_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {h12_lord_name}:</strong> "
-            f"{_s12:%Y-%mmm-%d} – {_e12:%Y-%mmm-%d}</p>"
+            f"{_s12:%Y-%m-%d} – {_e12:%Y-%m-%d}</p>"
         )
 
     # Weakness note for 12th-house lord (Avasthas & Śaḍbala)
@@ -2117,7 +2117,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_sun_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {sun_name}:</strong> "
-            f"{_sS:%Y-%mmm-%d} – {_eS:%Y-%mmm-%d}</p>"
+            f"{_sS:%Y-%m-%d} – {_eS:%Y-%m-%d}</p>"
         )
 
     # Weakness check specific to Sun (Baladi/Jagradadi avasthas + Śaḍbala threshold)
@@ -2270,7 +2270,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_moon_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {moon_name}:</strong> "
-            f"{_sM:%Y-%mmm-%d} – {_eM:%Y-%mmm-%d}</p>"
+            f"{_sM:%Y-%m-%d} – {_eM:%Y-%m-%d}</p>"
         )
 
     # Weakness check specific to Moon (Avasthas & Śaḍbala threshold)
@@ -2372,7 +2372,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_mars_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Mars:</strong> "
-            f"{_sm:%Y-%mmm-%d} – {_em:%Y-%mmm-%d}</p>"
+            f"{_sm:%Y-%m-%d} – {_em:%Y-%m-%d}</p>"
         )
 
     # Weakness check for Mars (Baladi/Jagradadi avasthas + Śaḍbala)
@@ -2481,7 +2481,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_mer_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Mercury:</strong> "
-            f"{_sm:%Y-%mmm-%d} – {_em:%Y-%mmm-%d}</p>"
+            f"{_sm:%Y-%m-%d} – {_em:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Mercury (Avasthas & Śaḍbala)
@@ -2586,7 +2586,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_j_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Jupiter:</strong> "
-            f"{_sj:%Y-%mmm-%d} – {_ej:%Y-%mmm-%d}</p>"
+            f"{_sj:%Y-%m-%d} – {_ej:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Jupiter (Avasthas & Shadbala)
@@ -2691,7 +2691,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_v_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Venus:</strong> "
-            f"{_sv:%Y-%mmm-%d} – {_ev:%Y-%mmm-%d}</p>"
+            f"{_sv:%Y-%m-%d} – {_ev:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Venus (Avasthas & Śaḍbala)
@@ -2807,7 +2807,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_s_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Saturn:</strong> "
-            f"{_ss:%Y-%mmm-%d} – {_es:%Y-%mmm-%d}</p>"
+            f"{_ss:%Y-%m-%d} – {_es:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Saturn (Avasthas & Śaḍbala)
@@ -2950,7 +2950,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         md_r_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of Rahu:</strong> "
-            f"{_sr:%Y-%mmm-%d} – {_er:%Y-%mmm-%d}</p>"
+            f"{_sr:%Y-%m-%d} – {_er:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Rahu (Avasthas & Śaḍbala if available)
@@ -3112,7 +3112,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         mdK_note_html = (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {ketu_name}:</strong> "
-            f"{_sK:%Y-%mmm-%d} – {_eK:%Y-%mmm-%d}</p>"
+            f"{_sK:%Y-%m-%d} – {_eK:%Y-%m-%d}</p>"
         )
 
     # Weakness note for Ketu (Avasthas & Shadbala) – local threshold per your spec
@@ -3172,7 +3172,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         s, e = md
         return (f"<p class='text-left mt-2'><strong>"
                 f"The above effects would be more prominent in the mahadasha of {pname}:</strong> "
-                f"{s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>")
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>")
 
     # helper: Jupiter aspect to a given house (0-based) from lagna
     def _jupiter_aspects_house(target_idx: int) -> bool:
@@ -3338,7 +3338,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         return (
             f"<p class='text-left mt-2'><strong>"
             f"The above effects would be more prominent in the mahadasha of {name}:</strong> "
-            f"{s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+            f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
         )
 
     # convenience: house index of a planet (for aspect/association checks)
@@ -3567,7 +3567,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             _s, _e = md
             md_note = (
                 f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {name}:</strong> "
-                f"{_s:%Y-%mmm-%d} – {_e:%Y-%mmm-%d}</p>"
+                f"{_s:%Y-%m-%d} – {_e:%Y-%m-%d}</p>"
             )
 
         # Weak-note (avasthas or sub-threshold shadbala)
@@ -3710,7 +3710,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             #if mdR:
             #    _sr, _er = mdR
             #    rashi_rahu_html = rashi_rahu_html.replace("</div>",
-            #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of Rahu:</strong> {_sr:%Y-%mmm-%d} – {_er:%Y-%mmm-%d}</p></div>"
+            #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of Rahu:</strong> {_sr:%Y-%m-%d} – {_er:%Y-%m-%d}</p></div>"
             #    )
             # Weak note (only avasthas apply; shadbala thresholds are not classically defined for nodes)
             #if (rahu_pid in avs["bala"]) or (rahu_pid in avs["mrita"]) or (rahu_pid in avs["sushupti"]):
@@ -3749,7 +3749,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             #if mdK:
             #    _sk, _ek = mdK
             #    rashi_ketu_html = rashi_ketu_html.replace("</div>",
-            #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of Ketu:</strong> {_sk:%Y-%mmm-%d} – {_ek:%Y-%mmm-%d}</p></div>"
+            #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of Ketu:</strong> {_sk:%Y-%m-%d} – {_ek:%Y-%m-%d}</p></div>"
             #    )
             # Weak note (only avasthas apply; shadbala thresholds are not classically defined for nodes)
             #if (ketu_pid in avs["bala"]) or (ketu_pid in avs["mrita"]) or (ketu_pid in avs["sushupti"]):
@@ -3899,7 +3899,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             md_html = (
                 f"<p class='text-left mt-2'><strong>"
                 f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
-                f"{s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
             )
 
         # Weakness check (balāvasthā, mṛtāvasthā, suṣupti; and Śaḍbala below threshold)
@@ -4093,7 +4093,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             md_html = (
                 f"<p class='text-left mt-2'><strong>"
                 f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
-                f"{s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
             )
 
         # Weakness check for the aspecting graha
@@ -4270,7 +4270,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             md_html = (
                 f"<p class='text-left mt-2'><strong>"
                 f"The above effects would be more prominent in the mahadasha of {PLANET_NAMES[asp_pid]}:</strong> "
-                f"{s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+                f"{s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
             )
 
         # Weakness check for the *aspecting* planet
@@ -4516,7 +4516,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         #if mdx:
         #    s, e = mdx
         #    block.append(
-        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
         #    )
 
         # per-aspecting-graha weakness note (any of the four conditions)
@@ -4756,7 +4756,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         #if mdx:
         #    s, e = mdx
         #    block.append(
-        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
         #    )
 
         # Weakness check for the aspecting graha (avasthas + shadbala)
@@ -4996,7 +4996,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         #if mdv:
         #    s, e = mdv
         #    block.append(
-        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
         #    )
 
         # Weakness check for the aspecting graha (avasthas + shadbala)
@@ -5152,7 +5152,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         #if mdv:
         #    s, e = mdv
         #    block.append(
-        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>"
+        #        f"<p class='text-left mt-2'><strong>The above effects would be more prominent in the mahadasha of {PLANET_NAMES.get(aspector_pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>"
         #    )
 
         # Weakness check for the aspecting graha (avasthas + shadbala)
@@ -5656,7 +5656,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             md = _md_period_for(pid)
             #if md:
             #    s, e = md
-            #    parts.append(f"<p class='text-left mt-1'><strong>The above effects would be more prominent in the mahadasha of {_planet_name(pid)}:</strong> {s:%Y-%mmm-%d} – {e:%Y-%mmm-%d}</p>")
+            #    parts.append(f"<p class='text-left mt-1'><strong>The above effects would be more prominent in the mahadasha of {_planet_name(pid)}:</strong> {s:%Y-%m-%d} – {e:%Y-%m-%d}</p>")
             # weakness note (if any)
             #parts.append(_weak_note_for(pid))
         if not any_match:
@@ -5876,7 +5876,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
     md_rows = []
     for lord, start_dt, end_dt in _md_sequence_from_birth():
         md_rows.append({
-            "Period": f"{start_dt:%Y-%mmm-%d} – {end_dt:%Y-%mmm-%d}",
+            "Period": f"{start_dt:%Y-%m-%d} – {end_dt:%Y-%m-%d}",
             "Planet": PLANET_NAMES.get(lord, str(lord)),
             "Predictions": _md_prediction(lord),
         })
