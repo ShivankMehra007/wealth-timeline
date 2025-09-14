@@ -9,6 +9,7 @@ except Exception:
     pd = None
 
 from career_timeline_full import timeline_from_args
+import os
 
 # Optional: external deps for geocoding + timezone
 import typing as _t
@@ -226,6 +227,7 @@ BASE = """<!doctype html>
           const data = await r.json();
           renderList(data.results || []);
         } catch (err) {
+          console.error('Typeahead fetch failed', err);
           clearList();
         }
       }, 300);
@@ -327,8 +329,25 @@ class Place:
     lon: float
     tz: str | None = None
 
+# Minimal offline fallback for common Indian cities (in case Nominatim is blocked)
+_FALLBACK_PLACES = [
+    Place("New Delhi", "New Delhi, Delhi, India", 28.6139, 77.2090, "Asia/Kolkata"),
+    Place("Delhi", "Delhi, India", 28.6517, 77.2219, "Asia/Kolkata"),
+    Place("Mumbai", "Mumbai, Maharashtra, India", 19.0760, 72.8777, "Asia/Kolkata"),
+    Place("Kolkata", "Kolkata, West Bengal, India", 22.5726, 88.3639, "Asia/Kolkata"),
+    Place("Chennai", "Chennai, Tamil Nadu, India", 13.0827, 80.2707, "Asia/Kolkata"),
+    Place("Bengaluru", "Bengaluru, Karnataka, India", 12.9716, 77.5946, "Asia/Kolkata"),
+    Place("Hyderabad", "Hyderabad, Telangana, India", 17.3850, 78.4867, "Asia/Kolkata"),
+    Place("Pune", "Pune, Maharashtra, India", 18.5204, 73.8567, "Asia/Kolkata"),
+    Place("Jaipur", "Jaipur, Rajasthan, India", 26.9124, 75.7873, "Asia/Kolkata"),
+    Place("Ahmedabad", "Ahmedabad, Gujarat, India", 23.0225, 72.5714, "Asia/Kolkata"),
+]
 
-def _tz_from_latlon(lat: float, lon: float) -> str | None:
+def _search_fallback(q: str) -> list[Place]:
+    ql = q.lower()
+    return [p for p in _FALLBACK_PLACES if ql in p.name.lower() or ql in p.display_name.lower()]
+
+def _tz_from_latlon(lat: float, lon: float) -> str | None:(lat: float, lon: float) -> str | None:
     if TimezoneFinder is None:
         return None
     try:
@@ -342,13 +361,17 @@ def _tz_from_latlon(lat: float, lon: float) -> str | None:
 def _search_places(q: str, limit: int = 8) -> list[Place]:
     """Query OpenStreetMap Nominatim for place suggestions."""
     url = "https://nominatim.openstreetmap.org/search"
+    email = os.getenv("NOMINATIM_EMAIL", "support@example.com")
     params = {
         "q": q,
         "format": "jsonv2",
         "addressdetails": 1,
         "limit": str(limit),
+        "accept-language": "en",
     }
-    headers = {"User-Agent": "vedic-astro-app/1.0 (+https://example.com)"}
+    if email and "@" in email:
+        params["email"] = email
+    headers = {"User-Agent": f"vedic-astro-app/1.0 ({email})"}
     r = requests.get(url, params=params, headers=headers, timeout=10)
     r.raise_for_status()
     out: list[Place] = []
@@ -372,7 +395,6 @@ def places():
         return jsonify({"results": []})
     try:
         results = _search_places(q, limit=8)
-        # serialize
         payload = [{
             "name": p.name,
             "display_name": p.display_name,
@@ -382,7 +404,17 @@ def places():
         } for p in results]
         return jsonify({"results": payload})
     except Exception as e:
-        return jsonify({"error": str(e), "results": []}), 500
+        # Fallback to a tiny in-app gazetteer for common Indian cities (works offline)
+        fallback = _search_fallback(q)
+        payload = [{
+            "name": p.name,
+            "display_name": p.display_name,
+            "lat": p.lat,
+            "lon": p.lon,
+            "tz": p.tz,
+        } for p in fallback]
+        status = 200 if payload else 502
+        return jsonify({"error": str(e), "results": payload}), status
 
 
 # Gunicorn entrypoint: app:app
