@@ -15,6 +15,7 @@ import os
 import typing as _t
 import requests
 from dataclasses import dataclass
+from typing import Optional, List
 try:
     from timezonefinder import TimezoneFinder  # pip install timezonefinder
 except Exception:
@@ -327,7 +328,7 @@ class Place:
     display_name: str
     lat: float
     lon: float
-    tz: str | None = None
+    tz: Optional[str] = None
 
 # Minimal offline fallback for common Indian cities (in case Nominatim is blocked)
 _FALLBACK_PLACES = [
@@ -343,11 +344,11 @@ _FALLBACK_PLACES = [
     Place("Ahmedabad", "Ahmedabad, Gujarat, India", 23.0225, 72.5714, "Asia/Kolkata"),
 ]
 
-def _search_fallback(q: str) -> list[Place]:
+def _search_fallback(q: str) -> List[Place]:
     ql = q.lower()
     return [p for p in _FALLBACK_PLACES if ql in p.name.lower() or ql in p.display_name.lower()]
 
-def _tz_from_latlon(lat: float, lon: float) -> str | None:(lat: float, lon: float) -> str | None:
+def _tz_from_latlon(lat: float, lon: float) -> Optional[str]:(lat: float, lon: float) -> str | None:
     if TimezoneFinder is None:
         return None
     try:
@@ -358,7 +359,7 @@ def _tz_from_latlon(lat: float, lon: float) -> str | None:(lat: float, lon: floa
         return None
 
 
-def _search_places(q: str, limit: int = 8) -> list[Place]:
+def _search_places(q: str, limit: int = 8) -> List[Place]:
     """Query OpenStreetMap Nominatim for place suggestions."""
     url = "https://nominatim.openstreetmap.org/search"
     email = os.getenv("NOMINATIM_EMAIL", "support@example.com")
@@ -374,7 +375,7 @@ def _search_places(q: str, limit: int = 8) -> list[Place]:
     headers = {"User-Agent": f"vedic-astro-app/1.0 ({email})"}
     r = requests.get(url, params=params, headers=headers, timeout=10)
     r.raise_for_status()
-    out: list[Place] = []
+    out: List[Place] = []
     for row in r.json():
         try:
             lat = float(row.get("lat"))
