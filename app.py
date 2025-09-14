@@ -322,6 +322,8 @@ def timeline():
 
 
 # ---------- Places API (typeahead) ----------
+from typing import Optional, List
+
 @dataclass
 class Place:
     name: str
@@ -330,7 +332,7 @@ class Place:
     lon: float
     tz: Optional[str] = None
 
-# Minimal offline fallback for common Indian cities (in case Nominatim is blocked)
+# Minimal offline fallback for common Indian cities (works if network is blocked)
 _FALLBACK_PLACES = [
     Place("New Delhi", "New Delhi, Delhi, India", 28.6139, 77.2090, "Asia/Kolkata"),
     Place("Delhi", "Delhi, India", 28.6517, 77.2219, "Asia/Kolkata"),
@@ -348,16 +350,14 @@ def _search_fallback(q: str) -> List[Place]:
     ql = q.lower()
     return [p for p in _FALLBACK_PLACES if ql in p.name.lower() or ql in p.display_name.lower()]
 
-def _tz_from_latlon(lat: float, lon: float) -> Optional[str]:(lat: float, lon: float) -> str | None:
+def _tz_from_latlon(lat: float, lon: float) -> Optional[str]:
     if TimezoneFinder is None:
         return None
     try:
         tf = TimezoneFinder(in_memory=True)
-        tz = tf.timezone_at(lat=lat, lng=lon)
-        return tz
+        return tf.timezone_at(lat=lat, lng=lon)
     except Exception:
         return None
-
 
 def _search_places(q: str, limit: int = 8) -> List[Place]:
     """Query OpenStreetMap Nominatim for place suggestions."""
@@ -373,8 +373,10 @@ def _search_places(q: str, limit: int = 8) -> List[Place]:
     if email and "@" in email:
         params["email"] = email
     headers = {"User-Agent": f"vedic-astro-app/1.0 ({email})"}
+
     r = requests.get(url, params=params, headers=headers, timeout=10)
     r.raise_for_status()
+
     out: List[Place] = []
     for row in r.json():
         try:
@@ -387,7 +389,6 @@ def _search_places(q: str, limit: int = 8) -> List[Place]:
         tz = _tz_from_latlon(lat, lon)
         out.append(Place(name=name, display_name=disp, lat=lat, lon=lon, tz=tz))
     return out
-
 
 @app.route("/places")
 def places():
@@ -405,7 +406,7 @@ def places():
         } for p in results]
         return jsonify({"results": payload})
     except Exception as e:
-        # Fallback to a tiny in-app gazetteer for common Indian cities (works offline)
+        # Fallback when Nominatim is unreachable/rate-limited
         fallback = _search_fallback(q)
         payload = [{
             "name": p.name,
