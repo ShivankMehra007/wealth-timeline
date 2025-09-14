@@ -5267,7 +5267,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             items.append(_yoga_item(
                 "Rāja-yoga",
                 raja_evd,
-                "Rise in status, authority and recognition; prominence during the dashā of the involved lords."
+                "Because Raja Yoga is active in your chart, you’re wired for visible achievement: you step into roles of authority, gain recognition for real substance, and attract patrons who open doors you once knocked on. Promotions, honors, and tangible comforts—better pay, property, vehicles, and a steadier support system—cluster around the periods when your yogas are triggered, and your work lands in front of the right people with less friction. You navigate institutions well, make decisive calls, and your name starts to carry weight; even early obstacles tend to become ladders you climb. Relationships align with your rise—alliances with capable, respected people—and travel or public-facing projects expand your reach. The fine print: each elevation brings responsibility, so your biggest wins arrive when you lead ethically, share credit, and keep a dharmic compass; do that, and Raja Yoga turns influence into legacy."
             ))
 
         # --- Dhana Yogas (2/11 and wealth-supporting combinations) ----------------
@@ -5301,7 +5301,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             items.append(_yoga_item(
                 "Dhana-yoga",
                 dhana_evd,
-                "Capacity to earn, accumulate and retain wealth; gains through networks and effort; results peak in the dashā of the connected lords."
+                "Because you have Dhana Yoga, you’re primed to attract wealth and build it steadily: income channels open up, savings grow, and opportunities to monetize your skills show up reliably."
             ))
 
         # --- Gaja-Keśarī (Guru in kendra from Moon) --------------------------------
@@ -5312,7 +5312,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 items.append(_yoga_item(
                     "Gaja-Keśarī-yoga",
                     [f"Jupiter in a kendra from Moon ({_house_name(jup_h)} from Moon’s sign)"],
-                    "Popularity, protection, intelligence and support from teachers/authority; auspicious during Moon/Jupiter periods."
+                    "Because you have Gaja Kesari yoga, you naturally draw respect and opportunity: you tend to be wealthy, well-known, learned, virtuous, and recognized by people in authority, with the potential for lasting fame."
                 ))
 
         # --- Viparīta Rāja-yoga (6/8/12 lords in other dusthānas or exchange) -----
@@ -5331,7 +5331,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             items.append(_yoga_item(
                 "Viparīta Rāja-yoga",
                 vry_evd,
-                "Rise after reversals; ability to defeat enemies and overcome debts/diseases; results during dashās of the involved dusthāna lords."
+                "This yoga will turn losses, challenges and hardships into success, wealth and status. You will find that when things appear to be falling apart, they are in fact rearranging in your favor. Losses that might devastate others can somehow lead you to better opportunities, and hardships that seem unfair at first eventually open doors to strength, wisdom, and stability. Again and again, you may notice that challenges transform into turning points—pushing you toward unexpected growth and success. This yoga makes you resilient, almost as if you carry a secret blessing that protects and uplifts you through adversity. Where others see misfortune, you find hidden wealth, not just in money, but in stability, reputation, and the ability to rise above. It gives your life a remarkable quality: the power to turn setbacks into steppingstones and to emerge stronger, wealthier, and more secure after every storm."
             ))
 
         # --- Chandra-Maṅgala (Moon & Mars conjunction) ----------------------------
@@ -5340,7 +5340,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             items.append(_yoga_item(
                 "Chandra-Maṅgala-yoga",
                 [f"Moon conjunct Mars in {_house_name(h0)}"],
-                "Strong drive for acquisition, entrepreneurial energy; can bring financial volatility depending on house and dignity."
+                "Chandra Maṅgala Yoga gives your life a special fire. You are naturally driven, energetic, and ambitious — money, land, and influence may flow to you more easily than to others, and you often find yourself in positions where your determination shines. Opportunities for growth and wealth seem to come your way, and you rarely shy away from hard work. At the same time, this yoga gives you an emotional intensity that others notice — you may sometimes react strongly, become stubborn in your views, or struggle to let go of hurt feelings. Your relationships, especially with your mother or maternal side of the family, may feel complicated, swinging between deep attachment and friction. This combination gives you the power to rise and shine in life, but it also asks you to balance your emotions with patience and understanding, so that your drive brings you not only success, but also peace in your personal life."
             ))
 
         # --- A few headline doshas (easy to verify) --------------------------------
@@ -5349,7 +5349,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             items.append(_yoga_item(
                 "Śakata-doṣa",
                 [f"Moon is {_house_name(moon_h)} from Jupiter (6/8 relationship)"],
-                "Fluctuating fortune, stop-go progress; mitigates with strong benefic support or during favourable dashās."
+                "You have Shakata Doṣa in your chart, which means that life often feels like riding a wheel that keeps turning – sometimes lifting you up to great heights, and other times plunging you into sudden lows. You may notice phases when prosperity, happiness, and comfort seem firmly within your grasp, only for circumstances to suddenly shift and pull them away. This constant cycle of gain and loss can create a sense of instability, making it difficult to feel secure or settled for long stretches of time. Yet, this yoga also pushes you to develop resilience, adaptability, and inner strength, because you learn not to take either success or struggle for granted. The fluctuations in fortune keep you alert and resourceful, teaching you how to rebuild when things fall apart and how to stay humble when things go well. In many ways, your destiny is to walk a path of change and transformation, where stability may not always come from external wealth or comfort, but from the strength and wisdom you cultivate within yourself."
             ))
         # (2) Kemadruma: no classical planets in houses 2 and 12 from Moon
         # (ignoring Sun, Rahu, Ketu for a simple check)
@@ -5368,7 +5368,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 items.append(_yoga_item(
                     "Kemadruma-doṣa",
                     ["No Mercury/Venus/Mars/Jupiter/Saturn in 2nd and 12th from Moon"],
-                    "Emotional isolation and resource vacuums; reduces with strong Moon or benefic aspects."
+                    "With Kemadruma Doṣa, often called the “Lonely Moon Yoga,” you may find that life has moments where you feel left to navigate the world on your own. At times, it can bring phases of social isolation, when you sense that others do not fully understand you or when close companionship feels just out of reach. Financial challenges may surface unexpectedly, creating periods of struggle where stability seems difficult to hold on to. Emotionally too, your inner world may feel turbulent, with mood swings or restlessness making it harder to find peace. This yoga often places you in situations where you must build resilience through solitude, testing your ability to stand strong without the usual support systems. Yet, through these experiences, you are being shaped into someone who is deeply self-reliant, sensitive to the suffering of others, and capable of growth that comes only through adversity. In short, Kemadruma teaches you that while life may test your endurance with hardship and emotional uncertainty, it also equips you with the inner strength to rise above loneliness and carve out a meaningful, self-forged path."
                 ))
 
         return items
@@ -5388,8 +5388,8 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 parts.append("<p class='text-left mb-1'><strong>Reason For the Yoga:</strong></p>")
                 for ev in it["evidence"]:
                     parts.append(f"<p class='text-left mb-1'>• {ev}</p>")
-            #if it.get("effects"):
-            #    parts.append(f"<p class='text-left mb-2'><strong>Predicted effects:</strong> {it['effects']}</p>")
+            if it.get("effects"):
+                parts.append(f"<p class='text-left mb-2'><strong>Predicted effects:</strong> {it['effects']}</p>")
         parts.append("</div>")
         return "".join(parts)
 
