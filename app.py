@@ -207,17 +207,9 @@ BASE = """<!doctype html>
     }
 
     function escapeHtml(s) {
-      return (s || '').replace(/[&<>\"']/g, function (m) {
-        return ({
-          '&' : '&amp;',
-          '<' : '&lt;',
-          '>' : '&gt;',
-          '\"': '&quot;',
-          '\'' : '&#39;'
-        })[m];
-      });
+      const map = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+      return String(s).replace(/[&<>"']/g, ch => map[ch]);
     }
-
 
     // Click handlers
     list.addEventListener('click', (e) => {
