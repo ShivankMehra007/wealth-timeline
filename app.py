@@ -208,9 +208,16 @@ BASE = """<!doctype html>
 
     function escapeHtml(s) {
       return (s || '').replace(/[&<>\"']/g, function (m) {
-        return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;'})[m];
+        return ({
+          '&' : '&amp;',
+          '<' : '&lt;',
+          '>' : '&gt;',
+          '\"': '&quot;',
+          '\'' : '&#39;'
+        })[m];
       });
     }
+
 
     // Click handlers
     list.addEventListener('click', (e) => {
