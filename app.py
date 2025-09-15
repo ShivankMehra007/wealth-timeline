@@ -154,6 +154,23 @@ BASE = """<!doctype html>
     let items = [];
     let activeIndex = -1;
 
+    // Client-side offline fallback (shows suggestions even if /places fails)
+    const OFFLINE_PLACES = [
+      {name:'New Delhi', display_name:'New Delhi, Delhi, India', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata'},
+      {name:'Delhi', display_name:'Delhi, India', lat:28.6517, lon:77.2219, tz:'Asia/Kolkata'},
+      {name:'Mumbai', display_name:'Mumbai, Maharashtra, India', lat:19.0760, lon:72.8777, tz:'Asia/Kolkata'},
+      {name:'Kolkata', display_name:'Kolkata, West Bengal, India', lat:22.5726, lon:88.3639, tz:'Asia/Kolkata'},
+      {name:'Chennai', display_name:'Chennai, Tamil Nadu, India', lat:13.0827, lon:80.2707, tz:'Asia/Kolkata'},
+      {name:'Bengaluru', display_name:'Bengaluru, Karnataka, India', lat:12.9716, lon:77.5946, tz:'Asia/Kolkata'},
+      {name:'Hyderabad', display_name:'Hyderabad, Telangana, India', lat:17.3850, lon:78.4867, tz:'Asia/Kolkata'},
+      {name:'Pune', display_name:'Pune, Maharashtra, India', lat:18.5204, lon:73.8567, tz:'Asia/Kolkata'}
+    ];
+    function localSearch(q){
+      const s = (q||'').toLowerCase();
+      if(!s||s.length<2) return [];
+      return OFFLINE_PLACES.filter(p=>p.name.toLowerCase().includes(s)||p.display_name.toLowerCase().includes(s)).slice(0,8);
+    }
+
     function clearList() {
       list.innerHTML = '';
       list.classList.add('d-none');
@@ -224,12 +241,18 @@ BASE = """<!doctype html>
       timer = setTimeout(async () => {
         try {
           const r = await fetch('/places?q=' + encodeURIComponent(q));
-          if (!r.ok) throw new Error('fetch failed');
+          if (!r.ok) throw new Error('fetch failed: ' + r.status);
           const data = await r.json();
-          renderList(data.results || []);
+          if (data && Array.isArray(data.results) && data.results.length) {
+            renderList(data.results);
+          } else {
+            const fb = localSearch(q);
+            if (fb.length) renderList(fb); else clearList();
+          }
         } catch (err) {
           console.error('Typeahead fetch failed', err);
-          clearList();
+          const fb = localSearch((placeInput.value||'').trim());
+          if (fb.length) renderList(fb); else clearList();
         }
       }, 300);
     });
