@@ -2,6 +2,8 @@
 from flask import Flask, request, render_template_string, jsonify, Response
 from markupsafe import Markup
 import inspect, json, html, math
+from pathlib import Path
+import csv, unicodedata, re, gzip
 
 try:
     import pandas as pd
@@ -253,7 +255,7 @@ BASE = """<!doctype html>
           const fb = localSearch((placeInput.value||'').trim());
           if (fb.length) renderList(fb); else clearList();
         }
-      }, 300);
+      }, 120);
     });
   })();
   </script>
@@ -351,9 +353,12 @@ class Place:
     lat: float
     lon: float
     tz: Optional[str] = None
+    pop: Optional[int] = None
+    admin1: Optional[str] = None
+    country: Optional[str] = None
 
-# Minimal offline fallback for common Indian cities (in case Nominatim is blocked)
-_FALLBACK_PLACES = [
+# Minimal built-in fallback so it works even with no CSV
+_FALLBACK_PLACES: List[Place] = [
     Place("New Delhi", "New Delhi, Delhi, India", 28.6139, 77.2090, "Asia/Kolkata"),
     Place("Delhi", "Delhi, India", 28.6517, 77.2219, "Asia/Kolkata"),
     Place("Mumbai", "Mumbai, Maharashtra, India", 19.0760, 72.8777, "Asia/Kolkata"),
@@ -366,81 +371,131 @@ _FALLBACK_PLACES = [
     Place("Ahmedabad", "Ahmedabad, Gujarat, India", 23.0225, 72.5714, "Asia/Kolkata"),
 ]
 
-def _search_fallback(q: str) -> List[Place]:
-    ql = q.lower()
-    return [p for p in _FALLBACK_PLACES if ql in p.name.lower() or ql in p.display_name.lower()]
+_GAZ: List[Place] = []
+_GAZ_NORM: List[tuple[str, int]] = []  # (normalized_display, index)
 
-def _tz_from_latlon(lat: float, lon: float) -> Optional[str]:
-    if TimezoneFinder is None:
-        return None
-    try:
-        tf = TimezoneFinder(in_memory=True)
-        tz = tf.timezone_at(lat=lat, lng=lon)
-        return tz
-    except Exception:
-        return None
+_DEF_DATA_PATHS = [
+    Path("/mnt/data/gazetteer.csv"),      # upload here on Render
+    Path("data/gazetteer.csv"),           # or keep committed in repo
+    Path("/mnt/data/gazetteer.jsonl.gz"), # optional JSONL.GZ (one JSON per line)
+    Path("data/gazetteer.jsonl.gz"),
+]
 
+def _norm(s: str) -> str:
+    s = unicodedata.normalize('NFKD', s)
+    s = ''.join(c for c in s if not unicodedata.combining(c))
+    return s.lower().strip()
 
-def _search_places(q: str, limit: int = 8) -> List[Place]:
-    """Query OpenStreetMap Nominatim for place suggestions."""
-    url = "https://nominatim.openstreetmap.org/search"
-    email = os.getenv("NOMINATIM_EMAIL", "support@example.com")
-    params = {
-        "q": q,
-        "format": "jsonv2",
-        "addressdetails": 1,
-        "limit": str(limit),
-        "accept-language": "en",
-    }
-    if email and "@" in email:
-        params["email"] = email
-    headers = {"User-Agent": f"vedic-astro-app/1.0 ({email})"}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
-    r.raise_for_status()
-    out: List[Place] = []
-    for row in r.json():
+_DEF_TZ = "Asia/Kolkata"
+
+def _make_display(name: str, admin1: Optional[str], country: Optional[str]) -> str:
+    parts = [name]
+    if admin1: parts.append(admin1)
+    if country: parts.append(country)
+    return ", ".join(parts)
+
+def _load_gazetteer(paths: Optional[List[Path]] = None) -> None:
+    global _GAZ, _GAZ_NORM
+    _GAZ.clear(); _GAZ_NORM.clear()
+    paths = paths or _DEF_DATA_PATHS
+
+    loaded = False
+    for p in paths:
+        if not p.exists():
+            continue
         try:
-            lat = float(row.get("lat"))
-            lon = float(row.get("lon"))
+            if p.suffix.lower() == ".gz":
+                import json as _json
+                with gzip.open(p, "rb") as fh:
+                    for line in fh:
+                        try:
+                            rec = _json.loads(line)
+                        except Exception:
+                            continue
+                        name = str(rec.get("name") or "").strip()
+                        if not name: continue
+                        lat = float(rec.get("lat")); lon = float(rec.get("lon"))
+                        admin1 = (rec.get("admin1") or rec.get("state") or "") or None
+                        country = (rec.get("country") or rec.get("country_name") or "") or None
+                        tz = (rec.get("tz") or rec.get("timezone") or "") or None
+                        pop = rec.get("pop") or rec.get("population") or None
+                        try: pop = int(pop) if pop is not None else None
+                        except Exception: pop = None
+                        disp = rec.get("display_name") or _make_display(name, admin1, country)
+                        if not tz: tz = _tz_from_latlon(lat, lon) or _DEF_TZ
+                        _GAZ.append(Place(name=name, display_name=disp, lat=lat, lon=lon, tz=tz, pop=pop, admin1=admin1, country=country))
+                loaded = True
+                break
+            else:
+                # CSV
+                with open(p, "r", encoding="utf-8", newline="") as fh:
+                    rdr = csv.DictReader(fh)
+                    for row in rdr:
+                        try:
+                            name = (row.get("name") or row.get("city") or "").strip()
+                            if not name: continue
+                            lat = float(row.get("lat") or row.get("latitude"))
+                            lon = float(row.get("lon") or row.get("longitude"))
+                            admin1 = (row.get("admin1") or row.get("state") or "").strip() or None
+                            country = (row.get("country") or row.get("country_name") or row.get("iso2") or "").strip() or None
+                            tz = (row.get("tz") or row.get("timezone") or "").strip() or None
+                            pop = row.get("pop") or row.get("population") or None
+                            try: pop = int(pop) if pop not in (None, "") else None
+                            except Exception: pop = None
+                            disp = row.get("display_name") or _make_display(name, admin1, country)
+                            if not tz: tz = _tz_from_latlon(lat, lon) or _DEF_TZ
+                            _GAZ.append(Place(name=name, display_name=disp, lat=lat, lon=lon, tz=tz, pop=pop, admin1=admin1, country=country))
+                        except Exception:
+                            continue
+                loaded = True
+                break
         except Exception:
             continue
-        name = row.get("name") or row.get("display_name") or "Unknown"
-        disp = row.get("display_name") or name
-        tz = _tz_from_latlon(lat, lon)
-        out.append(Place(name=name, display_name=disp, lat=lat, lon=lon, tz=tz))
+
+    if not loaded:
+        _GAZ.extend(_FALLBACK_PLACES)
+
+    # Build normalized index
+    for i, p in enumerate(_GAZ):
+        _GAZ_NORM.append((_norm(f"{p.name} {p.display_name}"), i))
+
+def _search_local(q: str, limit: int = 8) -> List[Place]:
+    qn = _norm(q)
+    if not qn: return []
+    tokens = [t for t in re.split(r"\s+", qn) if t]
+    scored: List[tuple[float, int]] = []
+    for key, idx in _GAZ_NORM:
+        if not all(t in key for t in tokens):  # all tokens must appear
+            continue
+        p = _GAZ[idx]
+        starts = key.startswith(qn)
+        pop = p.pop or 0
+        score = (2.0 if starts else 1.0) + (min(pop, 10_000_000) / 10_000_000.0)
+        scored.append((score, idx))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    out = [_GAZ[idx] for (_, idx) in scored[:limit]]
+    for p in out:
+        if not p.tz:
+            p.tz = _tz_from_latlon(p.lat, p.lon) or _DEF_TZ
     return out
 
+# Initialize gazetteer once at startup
+_load_gazetteer()
 
 @app.route("/places")
 def places():
     q = (request.args.get("q") or "").strip()
     if not q or len(q) < 2:
         return jsonify({"results": []})
-    try:
-        results = _search_places(q, limit=8)
-        # If the live lookup yields no results (rate-limit or niche spellings), try fallback too
-        if not results:
-            results = _search_fallback(q)
-        payload = [{
-            "name": p.name,
-            "display_name": p.display_name,
-            "lat": p.lat,
-            "lon": p.lon,
-            "tz": p.tz,
-        } for p in results]
-        return jsonify({"results": payload})
-    except Exception as e:
-        # Fallback to a tiny in-app gazetteer for common Indian cities (works offline)
-        fallback = _search_fallback(q)
-        payload = [{
-            "name": p.name,
-            "display_name": p.display_name,
-            "lat": p.lat,
-            "lon": p.lon,
-            "tz": p.tz,
-        } for p in fallback]
-        status = 200 if payload else 502
-        return jsonify({"error": str(e), "results": payload}), status
+    results = _search_local(q, limit=8)
+    payload = [{
+        "name": p.name,
+        "display_name": p.display_name,
+        "lat": p.lat,
+        "lon": p.lon,
+        "tz": p.tz,
+    } for p in results]
+    return jsonify({ "results": payload })
 
 
 # Gunicorn entrypoint: app:app
