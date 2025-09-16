@@ -5343,22 +5343,249 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 "Chandra Maṅgala Yoga gives your life a special fire. You are naturally driven, energetic, and ambitious — money, land, and influence may flow to you more easily than to others, and you often find yourself in positions where your determination shines. Opportunities for growth and wealth seem to come your way, and you rarely shy away from hard work. At the same time, this yoga gives you an emotional intensity that others notice — you may sometimes react strongly, become stubborn in your views, or struggle to let go of hurt feelings. Your relationships, especially with your mother or maternal side of the family, may feel complicated, swinging between deep attachment and friction. This combination gives you the power to rise and shine in life, but it also asks you to balance your emotions with patience and understanding, so that your drive brings you not only success, but also peace in your personal life."
             ))
 
-        # --- A few headline doshas (easy to verify) --------------------------------
-        # (1) Śakata-yoga: Moon in 6/8 from Jupiter
+        # --- Pancha-Mahāpurūṣa (single-planet) yogas ----------------------------
+        # Helper: exaltation map for PMY (soft fail if consts missing)
+        try:
+            _EXALT_SIGNS = {
+                getattr(const, "_MARS"): 9,      # Mars exalted in Makara (Capricorn)
+                getattr(const, "_MERCURY"): 5,  # Mercury exalted in Kanyā (Virgo)
+                getattr(const, "_JUPITER"): 3,  # Jupiter exalted in Karka (Cancer)
+                getattr(const, "_VENUS"): 11,   # Venus exalted in Mīna (Pisces)
+                getattr(const, "_SATURN"): 6,   # Saturn exalted in Tulā (Libra)
+            }
+        except Exception:
+            _EXALT_SIGNS = {}
+
+        def _own_or_exalt(pid: int) -> bool:
+            try:
+                s = _planet_sign(pid)
+                in_own = _SIGN_LORD[s] == pid
+                in_exalt = _EXALT_SIGNS.get(pid) == s
+                return bool(in_own or in_exalt)
+            except Exception:
+                return False
+
+        def _in_kendra_from_lagna(pid: int) -> bool:
+            h = _house_of(pid)
+            return h in {0,3,6,9}
+
+        pmy_defs = [
+            (getattr(const, "_MARS", None),   "Rucaka-yoga",   "Mars"),
+            (getattr(const, "_MERCURY", None),"Bhadra-yoga",   "Mercury"),
+            (getattr(const, "_JUPITER", None),"Haṃsa-yoga",   "Jupiter"),
+            (getattr(const, "_VENUS", None),  "Mālavya-yoga", "Venus"),
+            (getattr(const, "_SATURN", None), "Śaśa-yoga",   "Saturn"),
+        ]
+        for pid, yname, pname in pmy_defs:
+            if pid is None:
+                continue
+            if _in_kendra_from_lagna(pid) and _own_or_exalt(pid):
+                h0 = _house_of(pid)
+                items.append(_yoga_item(
+                    yname,
+                    [f"{pname} in a kendra ({_house_name(h0)}) in own/exalted sign"],
+                    "Pancha-Mahāpurūṣa yoga gives stature, charisma and tangible success through the planet’s significations: leadership, resources and public impact rise strongly in its periods."
+                ))
+
+        # --- Parivartana (exchange) yogas: Maha / Dainya / Khala -----------------
+        def _parivartana_category(houses_a: list[int], houses_b: list[int]) -> str:
+            good = {1,2,4,5,7,9,10,11}
+            trik = {6,8,12}
+            all_h = set(houses_a) | set(houses_b)
+            if all_h & trik:
+                # If both are trik, Viparīta already handled; treat as Dainya here
+                if set(houses_a).issubset(trik) and set(houses_b).issubset(trik):
+                    return "Viparīta (trik-trik)"
+                return "Dainya"
+            if 3 in all_h:
+                return "Khala"
+            return "Mahā"
+
+        classical = [getattr(const, "_SUN", None), getattr(const, "_MOON", None), getattr(const, "_MARS", None),
+                     getattr(const, "_MERCURY", None), getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_SATURN", None)]
+        seen_parivartanas: list[str] = []
+        for i in range(len(classical)):
+            for j in range(i+1, len(classical)):
+                p1, p2 = classical[i], classical[j]
+                if p1 is None or p2 is None:
+                    continue
+                if _is_exchange(p1, p2):
+                    ha, hb = _houses_ruled_by(p1), _houses_ruled_by(p2)
+                    cat = _parivartana_category(ha, hb)
+                    h1, h2 = _house_of(p1), _house_of(p2)
+                    seen_parivartanas.append(f"{_planet_name(p1)} ⇄ {_planet_name(p2)} ({_house_name(h1)} ⇄ {_house_name(h2)}) → {cat}")
+        if seen_parivartanas:
+            items.append(_yoga_item(
+                "Parivartana-yogas",
+                seen_parivartanas,
+                "Exchange of house-lords joins destinies. Mahā gives steady rise; Dainya mixes gains with struggle; trik-trik exchange produces Viparīta effects (wins from adversity); Khala (3rd involved) gives fluctuating, effort-driven results."
+            ))
+
+        # --- Adhi-yoga (benefics 6/7/8 from Moon; no malefics there) -------------
+        if moon_h is not None:
+            m6, m7, m8 = (moon_h+5)%12, (moon_h+6)%12, (moon_h+7)%12
+            benefics = [getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_MERCURY", None)]
+            malefics = [getattr(const, "_MARS", None), getattr(const, "_SATURN", None)]
+            ben_here = [p for p in benefics if p is not None and _house_of(p) in {m6,m7,m8}]
+            mal_here = [p for p in malefics if p is not None and _house_of(p) in {m6,m7,m8}]
+            if len(ben_here) >= 2 and not mal_here:
+                items.append(_yoga_item(
+                    "Adhi-yoga",
+                    [f"Benefics in 6/7/8 from Moon; none of Mars/Saturn there"],
+                    "Adhi Yoga confers rank, influence and support: calm authority, administrative ability and protection from powerful patrons."
+                ))
+
+        # --- Amala-yoga (benefic in 10th from lagna) ------------------------------
+        ben10 = [p for p in [getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_MERCURY", None)] if p is not None and _house_of(p) == 9]
+        if ben10:
+            items.append(_yoga_item(
+                "Amala-yoga",
+                [f"Benefic in the 10th from lagna: {', '.join(_planet_name(p) for p in ben10)}"],
+                "Amala Yoga gives spotless reputation and lasting career credit; your work leaves a clean, admired track-record."
+            ))
+
+        # --- Nabhasa yogas (life-pattern) ----------------------------------------
+        def _sign_type(idx: int) -> str:
+            return 'movable' if idx in {0,3,6,9} else ('fixed' if idx in {1,4,7,10} else 'dual')
+
+        P7 = [getattr(const, "_SUN", None), getattr(const, "_MOON", None), getattr(const, "_MARS", None),
+              getattr(const, "_MERCURY", None), getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_SATURN", None)]
+        P7 = [p for p in P7 if p is not None]
+        signs = [(_planet_sign(p) if _planet_sign(p) is not None else None) for p in P7]
+        if all(s is not None for s in signs):
+            types = {_sign_type(s) for s in signs}
+            if len(types) == 1:
+                t = types.pop()
+                name = { 'movable': 'Rajju (Aāśraya)', 'fixed': 'Mūsala (Aāśraya)', 'dual': 'Nāla (Aāśraya)'}[t]
+                items.append(_yoga_item(
+                    f"{name}",
+                    [f"All seven classical planets in {t} signs"],
+                    "A dominant life-tendency: mobility (Rajju), stability (Mūsala), or adaptable duality (Nāla) shapes choices and outcomes throughout life."
+                ))
+            # Dala: Maala & Sarpa (Moon excluded by classics)
+            ben = [getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_MERCURY", None)]
+            mal = [getattr(const, "_SUN", None), getattr(const, "_MARS", None), getattr(const, "_SATURN", None)]
+            ben_k = { _house_of(p) for p in ben if p is not None }
+            mal_k = { _house_of(p) for p in mal if p is not None }
+            kset = {0,3,6,9}
+            if len(ben_k & kset) >= 3 and not (mal_k & kset):
+                items.append(_yoga_item(
+                    "Mālā (Dala) yoga",
+                    ["Benefics occupy three kendras; malefics not in kendras"],
+                    "Constant enjoyments and resources; supportive environment and comforts."
+                ))
+            if len(mal_k & kset) >= 3 and not (ben_k & kset):
+                items.append(_yoga_item(
+                    "Sarpa (Dala) yoga",
+                    ["Malefics occupy three kendras; benefics outside kendras"],
+                    "Hard-fought progress with periods of pressure, dependence or scarcity sharpening resilience."
+                ))
+            # Aakriti highlights
+            houses = [_house_of(p) for p in P7]
+            hs = set(houses)
+            # Kamala: all planets in kendras
+            if hs and hs.issubset({0,3,6,9}):
+                items.append(_yoga_item(
+                    "Kamala (Aākṛti) yoga",
+                    ["All planets confined to kendras (1/4/7/10)"],
+                    "Lotus-like spread of status and protections; prominence and recognition."
+                ))
+            # Vaapi: all planets outside kendras
+            if not (hs & {0,3,6,9}):
+                items.append(_yoga_item(
+                    "Vāpi (Aākṛti) yoga",
+                    ["All planets in non-kendra houses"],
+                    "Hoarding/accumulation tendency; steady small comforts and guarded growth."
+                ))
+            # Gada: all planets in two adjacent kendras
+            for pair in [{0,3},{3,6},{6,9},{9,0}]:
+                if hs and hs.issubset(pair):
+                    items.append(_yoga_item(
+                        "Gada (Aākṛti) yoga",
+                        [f"All planets in adjacent kendras: {', '.join(_house_name(h) for h in sorted(pair))}"],
+                        "Wealth focus and ceaseless earning temperament; results hinge on strength of the occupied kendras."
+                    ))
+                    break
+            # Pakshi (Vihaga): all planets in 4 and 10
+            if hs and hs.issubset({3,9}):
+                items.append(_yoga_item(
+                    "Pakṣi/Vihaga (Aākṛti) yoga",
+                    ["All planets distributed between 4th and 10th houses"],
+                    "Restless, service-oriented, messenger/mediator roles; frequent movements."
+                ))
+            # Shakata (Aakriti): all planets in 1 and 7
+            if hs and hs.issubset({0,6}):
+                items.append(_yoga_item(
+                    "Śakata (Aākṛti) yoga",
+                    ["All planets distributed between 1st and 7th houses"],
+                    "Oscillation between highs and lows; partnerships become pivotal axis of life."
+                ))
+            # Vajra & Yava
+            ben_h = { _house_of(p) for p in ben if p is not None }
+            mal_h = { _house_of(p) for p in mal if p is not None }
+            if {0,6}.issubset(ben_h) and {3,9}.issubset(mal_h):
+                items.append(_yoga_item(
+                    "Vajra (Aākṛti) yoga",
+                    ["Benefics in 1 & 7; malefics in 4 & 10"],
+                    "Strong early and late life comforts with testing middle years; courage with refinement."
+                ))
+            if {0,6}.issubset(mal_h) and {3,9}.issubset(ben_h):
+                items.append(_yoga_item(
+                    "Yava (Aākṛti) yoga",
+                    ["Malefics in 1 & 7; benefics in 4 & 10"],
+                    "Consistent nature, charity and mid-life strength with tested beginnings/endings."
+                ))
+
+        # --- Moon-based yogas & Kemadruma logic ----------------------------------
+        # Sunāpha: planets (except Sun) in 2nd from Moon
+        sunapha_ev, anapha_ev, durudhara_ev = [], [], []
+        if moon_h is not None:
+            h2 = (moon_h + 1) % 12
+            h12 = (moon_h + 11) % 12
+            klass = [getattr(const, "_MERCURY", None), getattr(const, "_VENUS", None), getattr(const, "_MARS", None), getattr(const, "_JUPITER", None), getattr(const, "_SATURN", None)]
+            if any(_house_of(p) == h2 for p in klass if p is not None):
+                sunapha_list = [p for p in klass if p is not None and _house_of(p) == h2]
+                sunapha_ev.append(f"Planets in 2nd from Moon: {', '.join(_planet_name(p) for p in sunapha_list)}")
+                items.append(_yoga_item(
+                    "Sunāpha-yoga",
+                    sunapha_ev,
+                    "Self-made prosperity and initiative; resources accrue by one’s effort and skills."
+                ))
+            if any(_house_of(p) == h12 for p in klass if p is not None):
+                anapha_list = [p for p in klass if p is not None and _house_of(p) == h12]
+                anapha_ev.append(f"Planets in 12th from Moon: {', '.join(_planet_name(p) for p in anapha_list)}")
+                items.append(_yoga_item(
+                    "Anāpha-yoga",
+                    anapha_ev,
+                    "Composure, dignity and comforts; a self-contained nature that resists needless dependence."
+                ))
+            if any(_house_of(p) == h2 for p in klass if p is not None) and any(_house_of(p) == h12 for p in klass if p is not None):
+                d_left = [p for p in klass if p is not None and _house_of(p) == h12]
+                d_right = [p for p in klass if p is not None and _house_of(p) == h2]
+                durudhara_ev.append(f"Planets flank Moon in 12th & 2nd: left({', '.join(_planet_name(p) for p in d_left)}), right({', '.join(_planet_name(p) for p in d_right)})")
+                items.append(_yoga_item(
+                    "Durdhurā-yoga",
+                    durudhara_ev,
+                    "Supportive flanks to the mind: resources, allies and continuity surround your initiatives."
+                ))
+
+        # --- A few headline doṣas & related checks ----------------------------
+        # (1) Śakata-doṣa: Moon in 6/8 from Jupiter
         if (moon_h is not None) and (jup_h is not None) and ((moon_h - jup_h) % 12 in {5,7}):
             items.append(_yoga_item(
                 "Śakata-doṣa",
                 [f"Moon is {_house_name(moon_h)} from Jupiter (6/8 relationship)"],
-                "You have Shakata Doṣa in your chart, which means that life often feels like riding a wheel that keeps turning – sometimes lifting you up to great heights, and other times plunging you into sudden lows. You may notice phases when prosperity, happiness, and comfort seem firmly within your grasp, only for circumstances to suddenly shift and pull them away. This constant cycle of gain and loss can create a sense of instability, making it difficult to feel secure or settled for long stretches of time. Yet, this yoga also pushes you to develop resilience, adaptability, and inner strength, because you learn not to take either success or struggle for granted. The fluctuations in fortune keep you alert and resourceful, teaching you how to rebuild when things fall apart and how to stay humble when things go well. In many ways, your destiny is to walk a path of change and transformation, where stability may not always come from external wealth or comfort, but from the strength and wisdom you cultivate within yourself."
+                "Highs and lows in fortune; resilience grows by navigating alternating tides of gain and loss."
             ))
-        # (2) Kemadruma: no classical planets in houses 2 and 12 from Moon
-        # (ignoring Sun, Rahu, Ketu for a simple check)
-        if moon_h is not None:
+
+        # (2) Kemadruma: only if Sunāpha/Anāpha/Durdhurā absent
+        has_moon_support = bool(sunapha_ev or anapha_ev or durudhara_ev)
+        if (moon_h is not None) and (not has_moon_support):
             empties = True
             for off in (1, 11):  # 2nd/12th from Moon (0-based offsets)
                 any_planet = False
-                for p in (const._MERCURY, const._VENUS, const._MARS, const._JUPITER, const._SATURN):
-                    if _house_of(p) == (moon_h + off) % 12:
+                for p in (getattr(const, "_MERCURY", None), getattr(const, "_VENUS", None), getattr(const, "_MARS", None), getattr(const, "_JUPITER", None), getattr(const, "_SATURN", None)):
+                    if p is not None and _house_of(p) == (moon_h + off) % 12:
                         any_planet = True
                         break
                 if any_planet:
@@ -5368,8 +5595,62 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 items.append(_yoga_item(
                     "Kemadruma-doṣa",
                     ["No Mercury/Venus/Mars/Jupiter/Saturn in 2nd and 12th from Moon"],
-                    "With Kemadruma Doṣa, often called the “Lonely Moon Yoga,” you may find that life has moments where you feel left to navigate the world on your own. At times, it can bring phases of social isolation, when you sense that others do not fully understand you or when close companionship feels just out of reach. Financial challenges may surface unexpectedly, creating periods of struggle where stability seems difficult to hold on to. Emotionally too, your inner world may feel turbulent, with mood swings or restlessness making it harder to find peace. This yoga often places you in situations where you must build resilience through solitude, testing your ability to stand strong without the usual support systems. Yet, through these experiences, you are being shaped into someone who is deeply self-reliant, sensitive to the suffering of others, and capable of growth that comes only through adversity. In short, Kemadruma teaches you that while life may test your endurance with hardship and emotional uncertainty, it also equips you with the inner strength to rise above loneliness and carve out a meaningful, self-forged path."
+                    "Periods of isolation and financial strain test self-reliance; remedies come via routine, alliances and lunar strengthening."
                 ))
+
+        # (3) Harṣa / Sarala / Vimala (Viparīta subtypes)
+        if _house_of(L6) == 5:
+            items.append(_yoga_item(
+                "Harṣa (Viparīta) rāja-yoga",
+                ["L6 placed in the 6th"],
+                "Victory over enemies, litigation and illness; strength rises through disciplined service."
+            ))
+        if _house_of(L8) == 7:
+            items.append(_yoga_item(
+                "Sarala (Viparīta) rāja-yoga",
+                ["L8 placed in the 8th"],
+                "Hidden strengths and inheritance-like benefits; transformations empower."
+            ))
+        if _house_of(L12) == 11:
+            items.append(_yoga_item(
+                "Vimala (Viparīta) rāja-yoga",
+                ["L12 placed in the 12th"],
+                "Frugality and detachment convert losses into savings, sanctuary and quiet authority."
+            ))
+
+        # (4) Arisṣta (ill-health/misfortune) basic patterns
+        arishta_evd: list[str] = []
+        if _house_of(L1) in {5,7,11}:
+            arishta_evd.append("L1 placed in a dusthāna (6/8/12)")
+        for p,lbl in [(L6,"L6"),(L8,"L8"),(L12,"L12")]:
+            if _is_conj(L1, p):
+                arishta_evd.append(f"L1 conjunct {lbl}")
+            if _is_exchange(L1, p):
+                arishta_evd.append(f"L1 in parivartana with {lbl}")
+        if arishta_evd:
+            items.append(_yoga_item(
+                "Arisṣta-yogas (basic)",
+                arishta_evd,
+                "Periods of strain or illness can interrupt rise; prioritize health systems, boundaries and timing."
+            ))
+
+        # (5) Daridra (poverty/strain) basic set (simplified; no aspect checks)
+        dar_evd: list[str] = []
+        if _house_of(L1) == 11 and _house_of(L12) == 0:
+            dar_evd.append("L1 in 12th and L12 in 1st")
+        if _house_of(L1) == 5 and _house_of(L6) == 0:
+            dar_evd.append("L1 in 6th and L6 in 1st")
+        # Mars & Saturn together in 2nd
+        if _is_conj(getattr(const, "_MARS", None), getattr(const, "_SATURN", None)) and _house_of(getattr(const, "_MARS", None)) == 1:
+            dar_evd.append("Mars and Saturn in 2nd house together")
+        if _house_of(L2) == 5:
+            dar_evd.append("L2 placed in 6th (strain on accumulation)")
+        if dar_evd:
+            items.append(_yoga_item(
+                "Daridra-yogas (basic)",
+                dar_evd,
+                "Guard wealth during vulnerable periods; build buffers, reduce leverage and diversify income streams."
+            ))
 
         return items
 
