@@ -300,6 +300,13 @@ BASE = """<!doctype html>
       </div>
     </div>
 
+    <!-- Recommended Services (always visible) -->
+    <div class=\"row mt-4\">
+      <div class=\"col-12\" id=\"services\">
+        {{ services|safe }}
+      </div>
+    </div>
+
     <!-- Output area -->
     <div class=\"row mt-4\">
       <div class=\"col-12\" id=\"output\">
@@ -433,17 +440,17 @@ def _render_any(value):
         low = s.lower()
         if low.startswith("<!doctype") or "<html" in low:
             return Response(s, mimetype="text/html")
-        return render_template_string(BASE, body=Markup(s))
+        return render_template_string(BASE, body=Markup(s), services=Markup(_render_services_panel()))
     if pd is not None and isinstance(value, pd.DataFrame):
         table = value.to_html(index=False, classes="table table-striped table-sm")
-        return render_template_string(BASE, body=Markup(table))
+        return render_template_string(BASE, body=Markup(table), services=Markup(_render_services_panel()))
     if isinstance(value, (dict, list, tuple)):
         try:
             pretty = json.dumps(value, indent=2, default=str)
-            return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"))
+            return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"), services=Markup(_render_services_panel()))
         except Exception:
             pass
-    return render_template_string(BASE, body=Markup(f"<pre>{html.escape(str(value))}</pre>"))
+    return render_template_string(BASE, body=Markup(f"<pre>{html.escape(str(value), services=Markup(_render_services_panel()))}</pre>"))
 
 
 def _sanitize_kwargs(fn, raw: dict) -> dict:
@@ -475,7 +482,7 @@ def _sanitize_kwargs(fn, raw: dict) -> dict:
 
 @app.route("/", methods=["GET"])
 def home():
-    return render_template_string(BASE, body=Markup("<div class='help'>Results will appear here after you submit.</div>"))
+    return render_template_string(BASE, body=Markup("<div class='help'>Results will appear here after you submit.</div>"), services=Markup(_render_services_panel()))
 
 
 @app.route("/timeline", methods=["POST"])
@@ -493,7 +500,7 @@ def timeline():
         # Build an HTML error explaining which args are expected
         expected = ", ".join(inspect.signature(timeline_from_args).parameters.keys())
         msg = f"<div class='alert alert-danger'>Bad input: {html.escape(str(e))}<br>Expected keys: <code>{html.escape(expected)}</code></div>"
-        return render_template_string(BASE, body=Markup(msg))
+        return render_template_string(BASE, body=Markup(msg), services=Markup(_render_services_panel()))
 
     # JSON mode if requested
     wants_json = request.headers.get("Accept", "").lower().startswith("application/json") \
@@ -505,10 +512,7 @@ def timeline():
             return jsonify({"columns": result.columns.tolist(),
                             "rows": result.to_dict(orient="records")})
         return jsonify({"data": result})
-        # --- Services panel (HTML only) ---
-    if isinstance(result, str):
-        result = result + _render_services_panel()
-    return _render_any(result)
+        return _render_any(result)
 
 
 # ---------- Places API (typeahead) ----------
@@ -667,3 +671,4 @@ def places():
 # Gunicorn entrypoint: app:app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=False)
+
