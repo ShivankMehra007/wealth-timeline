@@ -75,23 +75,28 @@ BASE = """<!doctype html>
       <div class=\"col-lg-5\">
         <form method=\"post\" action=\"/timeline\" class=\"card card-body gap-2 shadow-sm\">
           <div class=\"help mb-2\">
-            Enter birth details. Latitude/Longitude preferred; timezone like <code>+05:30</code> or IANA (e.g., <code>Asia/Kolkata</code>).
+            Enter birth details. You may select the birth place from the suggestions drop-down when you start typing. Latitude/Longitude and timezone would be automatically selected for you.
           </div>
           <div class=\"row g-2\">
             <div class=\"col-12\">
-              <label class=\"form-label\">Name</label>
+              <label class=\"form-label\">Name (Optional)</label>
               <input type=\"text\" name=\"name\" class=\"form-control\" placeholder=\"Anonymous\">
             </div>
           </div>
           <div class=\"row g-2\">
             <div class=\"col-6\">
-              <label class=\"form-label\">Date</label>
+              <label class=\"form-label\">Date (Month/Date/Year)</label>
               <input type=\"date\" name=\"date\" class=\"form-control\" required>
             </div>
             <div class=\"col-6\">
-              <label class=\"form-label\">Time</label>
+              <label class=\"form-label\">Time (Hours:Minutes AM/PM)</label>
               <input type=\"time\" name=\"time\" class=\"form-control\" step=\"60\" required>
             </div>
+          </div>
+          <div class=\"col-6 typeahead-wrap\">
+              <label class=\"form-label\">Place (select from drop down)</label>
+              <input type=\"text\" name=\"place\" id=\"place\" class=\"form-control\" placeholder=\"City, Country\" autocomplete=\"off\">
+              <div id=\"place-list\" class=\"typeahead-list d-none\"></div>
           </div>
           <div class=\"row g-2\">
             <div class=\"col-6\">
@@ -106,11 +111,6 @@ BASE = """<!doctype html>
               <label class=\"form-label\">Timezone</label>
               <input type=\"text\" name=\"tz\" id=\"tz\" class=\"form-control\" placeholder=\"+05:30 or Asia/Kolkata\">
             </div>
-            <div class=\"col-6 typeahead-wrap\">
-              <label class=\"form-label\">Place (optional)</label>
-              <input type=\"text\" name=\"place\" id=\"place\" class=\"form-control\" placeholder=\"City, Country\" autocomplete=\"off\">
-              <div id=\"place-list\" class=\"typeahead-list d-none\"></div>
-            </div>
           </div>
           <button type=\"submit\" class=\"btn btn-primary mt-2\">Compute</button>
           <div class=\"help mt-2\">
@@ -123,11 +123,13 @@ BASE = """<!doctype html>
         <div class=\"card card-body h-100 bg-light border-0 shadow-sm sticky-top-custom\">
           <h2 class=\"h5 mb-2\">What you’ll see</h2>
           <p class=\"mb-2\">
-            This tool uses classical Jyotiṣa rules with PyJHora under the hood to assemble a readable report.
-            It summarises placements, houses, strengths/avasthas, yogas/doshas, and dashā timelines—then
-            rewrites the results in plain language. Treat the output as guidance, not certainty.
+            This tool uses classical Jyotiṣa rules to assemble a readable report. It summarises placements, houses, strengths/avasthas, yogas/doshas, and dashā timelines—then rewrites the results in plain language. Treat the output as guidance, not certainty.
+          </p>
+          <p class=\"mb-2\">
+            Some predictions are clearly connected to specific stages of life. Others, which are not tied to a life stage, are more likely to show up strongly during the mahadashas and antardashas of the planets involved. If two predictions seem to contradict each other, they may cancel each other out, meaning neither happens, or they may occur at different times. Remember: every planet gives its results most powerfully in its own mahadasha, and next strongest during its antardashas.
           </p>
           <ul class=\"mb-0 small\">
+            <li>You may select the birth place from the suggestions drop-down when you start typing. Latitude/Longitude and timezone would be automatically selected for you.</li>
             <li>Use decimal latitude/longitude when possible for accuracy.</li>
             <li>Timezone accepts <code>+HH:MM</code>, a number (e.g. <code>5.5</code>), or an IANA zone.</li>
             <li>Results appear below this section as tables and narrative blocks you can copy or print.</li>

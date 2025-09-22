@@ -3293,7 +3293,8 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             elif n in (4, 7):     lines += ["You tend to be adverse for parents and chronically unhappy."]
             elif n in (2, 11):    lines += ["Although you will enjoy fame and wealth there might be very little real comfort."]
             elif n == 5:          lines += ["You face risk of death by drowning and few comforts."]
-            else:                 lines += [""]
+            elif n == 3:          lines += ["Rahu in the third house from the Moon indicates significant courage, ambition, and a potential for success in areas like media, sales, and entrepreneurship, but it can also lead to overconfidence, recklessness, and conflicts, particularly with siblings. This placement suggests a person who is street-smart, willing to take risks, and has a strong will, though they may struggle with emotional control and trusting others' judgment."]            
+            else:                 lines += ["You may have been born in a family with many dark secrets. You may have dark tendencies and taboo desires. Interest in the occult could be indicated by this placement."]
 
         # Build HTML block
         block = (
@@ -5384,7 +5385,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                 items.append(_yoga_item(
                     yname,
                     [f"{pname} in a kendra ({_house_name(h0)}) in own/exalted sign"],
-                    "Pancha-Mahāpurūṣa yoga gives stature, charisma and tangible success through the planet’s significations: leadership, resources and public impact rise strongly in its periods."
+                    "Pancha-Mahāpurūṣa yoga gives stature, charisma and tangible success. Leadership, resources and public impact rise strongly."
                 ))
 
         # --- Parivartana (exchange) yogas: Maha / Dainya / Khala -----------------
@@ -5392,10 +5393,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             good = {1,2,4,5,7,9,10,11}
             trik = {6,8,12}
             all_h = set(houses_a) | set(houses_b)
+            # trik-trik is a Viparīta style exchange
+            if set(houses_a).issubset(trik) and set(houses_b).issubset(trik):
+                return "Viparīta (trik-trik)"
             if all_h & trik:
-                # If both are trik, Viparīta already handled; treat as Dainya here
-                if set(houses_a).issubset(trik) and set(houses_b).issubset(trik):
-                    return "Viparīta (trik-trik)"
                 return "Dainya"
             if 3 in all_h:
                 return "Khala"
@@ -5403,7 +5404,8 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
 
         classical = [getattr(const, "_SUN", None), getattr(const, "_MOON", None), getattr(const, "_MARS", None),
                      getattr(const, "_MERCURY", None), getattr(const, "_JUPITER", None), getattr(const, "_VENUS", None), getattr(const, "_SATURN", None)]
-        seen_parivartanas: list[str] = []
+
+        # Emit one item per actual Parivartana found; no generic description when none exist
         for i in range(len(classical)):
             for j in range(i+1, len(classical)):
                 p1, p2 = classical[i], classical[j]
@@ -5413,13 +5415,25 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
                     ha, hb = _houses_ruled_by(p1), _houses_ruled_by(p2)
                     cat = _parivartana_category(ha, hb)
                     h1, h2 = _house_of(p1), _house_of(p2)
-                    seen_parivartanas.append(f"{_planet_name(p1)} ⇄ {_planet_name(p2)} ({_house_name(h1)} ⇄ {_house_name(h2)}) → {cat}")
-        if seen_parivartanas:
-            items.append(_yoga_item(
-                "Parivartana-yogas",
-                seen_parivartanas,
-                "Exchange of house-lords joins destinies. Mahā gives steady rise; Dainya mixes gains with struggle; trik-trik exchange produces Viparīta effects (wins from adversity); Khala (3rd involved) gives fluctuating, effort-driven results."
-            ))
+                    title_map = {
+                        "Mahā": "Mahā Parivartana-yoga",
+                        "Dainya": "Dainya Parivartana-yoga",
+                        "Viparīta (trik-trik)": "Viparīta Parivartana-yoga",
+                        "Khala": "Khala Parivartana-yoga",
+                    }
+                    desc_map = {
+                        "Mahā": "You will get stable growth in status and wealth.",
+                        "Dainya": "You will get mixed outcomes— gains will come through contests, debts or service. Manage risk carefully.",
+                        "Viparīta (trik-trik)": "Although you will face adversity you will also get unexpected relief and recovery in relevant periods.",
+                        "Khala": "You will make effort and hustle, yet receive fluctuating returns.",
+                    }
+                    title = title_map.get(cat, "Parivartana-yoga")
+                    evidence = [
+                        f"{_planet_name(p1)} ⇄ {_planet_name(p2)} ({_house_name(h1)} ⇄ {_house_name(h2)})",
+                        f"Houses ruled: {','.join(str(h) for h in sorted(ha))} ↔ {','.join(str(h) for h in sorted(hb))}",
+                        f"Category: {cat}",
+                    ]
+                    items.append(_yoga_item(title, evidence, desc_map.get(cat, "Exchange of house-lords joins destinies; outcomes depend on house quality and strength.")))
 
         # --- Adhi-yoga (benefics 6/7/8 from Moon; no malefics there) -------------
         if moon_h is not None:
