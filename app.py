@@ -185,10 +185,6 @@ def _render_services_panel(top_categories=("career", "money", "relationships")):
         <summary class="small text-primary" style="cursor:pointer;">See all services</summary>
         <div class="row mt-2">{rest_html}</div>
       </details>
-
-      <p class="small text-muted mt-2">
-        We may earn a referral fee. We only show options that many users find genuinely helpful.
-      </p>
     </section>
     """
 
