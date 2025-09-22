@@ -30,6 +30,168 @@ except Exception:
 
 app = Flask(__name__)
 
+# --- Affiliate Services Catalog ---
+SERVICES = [
+    {
+        "id": "ask-3q",
+        "title": "Consult Our Astrologer: Ask up to 3 Questions",
+        "url": "https://www.astroved.com/ask-astrologer-3-questions-consult-our-astrologer-ask-up-to-3-questions-P122.aspx?affId=chartreader",
+        "category": "general",
+        "benefit": "Get precise answers for 3 burning questions",
+        "badge": "Popular"
+    },
+    {
+        "id": "match",
+        "title": "Horoscope Matching Report",
+        "url": "https://www.astroved.com/customized-reports-horoscope-matching-report-P117.aspx?affId=chartreader",
+        "category": "relationships",
+        "benefit": "Traditional compatibility with clear dosha guidance",
+        "badge": "Shaadi"
+    },
+    {
+        "id": "money-1y",
+        "title": "One-Year Money & Prosperity Report",
+        "url": "https://www.astroved.com/customized-reports-one-year-detailed-money-and-prosperity-report-P118.aspx?affId=chartreader",
+        "category": "money",
+        "benefit": "12-month cash-flow outlook + key dates"
+    },
+    {
+        "id": "career-1y",
+        "title": "One-Year Career Report",
+        "url": "https://www.astroved.com/customized-reports-one-year-detailed-career-report-P119.aspx?affId=chartreader",
+        "category": "career",
+        "benefit": "Opportunities, promotions, and switch timing",
+        "badge": "Career"
+    },
+    {
+        "id": "health-1y",
+        "title": "One-Year Health & Well-Being Report",
+        "url": "https://www.astroved.com/customized-reports-one-year-detailed-health-and-well-being-report-P120.aspx?affId=chartreader",
+        "category": "health",
+        "benefit": "Risk windows + lifestyle recommendations"
+    },
+    {
+        "id": "remedy",
+        "title": "Astrologer-Prescribed Remedy",
+        "url": "https://www.astroved.com/customized-reports-astrologer-prescribed-remedy-for-your-problem-P125.aspx?affId=chartreader",
+        "category": "remedies",
+        "benefit": "Personalized puja/mantra/gem guidance",
+        "badge": "Remedy"
+    },
+    {
+        "id": "love-360",
+        "title": "Detailed Love & Relationships Report",
+        "url": "https://www.astroved.com/customized-reports-360-degree-love-profile-P132.aspx?affId=chartreader",
+        "category": "relationships",
+        "benefit": "Attraction patterns & timing for love"
+    },
+    {
+        "id": "business",
+        "title": "Business Prospect Report",
+        "url": "https://www.astroved.com/customized-reports-business-prospect-report-P397.aspx?affId=chartreader",
+        "category": "business",
+        "benefit": "Expansion timing & risk assessment"
+    },
+    {
+        "id": "karmic",
+        "title": "Karmic Astrology (Past-Life Influence) Report",
+        "url": "https://www.astroved.com/customized-reports-karmic-astrology-report-past-life-influence-report--P399.aspx?affId=chartreader",
+        "category": "karmic",
+        "benefit": "Past-life themes affecting present"
+    },
+    {
+        "id": "nadi-agastya",
+        "title": "Essential Nadi Package (Agastya)",
+        "url": "https://www.astroved.com/nadi-astrology-agastya-nadi-essential-package-P62903.aspx?affId=chartreader",
+        "category": "nadi",
+        "benefit": "Classical leaf reading experience"
+    },
+    {
+        "id": "nadi-thuliya",
+        "title": "Essential Nadi Package (Thuliya)",
+        "url": "https://www.astroved.com/nadi-astrology-essential-thuliya-nadi-package-P48065.aspx?affId=chartreader",
+        "category": "nadi",
+        "benefit": "Focused Nadi insights & remedies"
+    },
+    {
+        "id": "fame",
+        "title": "Entertainment Fame Report",
+        "url": "https://www.astroved.com/customized-reports-entertainment-fame-report-P580.aspx?affId=chartreader",
+        "category": "fame",
+        "benefit": "Brand, recognition & visibility path"
+    },
+    {
+        "id": "sports",
+        "title": "Sports Astrology Report",
+        "url": "https://www.astroved.com/customized-reports-sports-astrology-report-P579.aspx?affId=chartreader",
+        "category": "sports",
+        "benefit": "Peak performance periods & training focus"
+    },
+]
+
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+
+def _append_utms(url: str, source="chartapp", medium="referral", campaign="services_panel"):
+    """Preserve existing affId, add UTM tags safely."""
+    u = urlparse(url)
+    q = dict(parse_qsl(u.query, keep_blank_values=True))
+    # ensure affId remains if already present; otherwise you can set default
+    q.setdefault("affId", "chartreader")
+    q.update({
+        "utm_source": source,
+        "utm_medium": medium,
+        "utm_campaign": campaign
+    })
+    return urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(q, doseq=True), u.fragment))
+
+
+def _render_services_panel(top_categories=("career", "money", "relationships")):
+    """Return HTML for a compact, high-conversion services section."""
+    # choose top picks (prioritize popular categories)
+    top = [s for s in SERVICES if s["category"] in top_categories][:3]
+    rest = [s for s in SERVICES if s not in top]
+
+    def card_html(s):
+        url = _append_utms(s["url"])
+        badge = f"<span class='badge bg-success ms-2'>{s.get('badge','')}</span>" if s.get("badge") else ""
+        return f"""
+        <div class="col-md-4 col-sm-6 mb-3">
+          <a href="{html.escape(url)}" class="text-decoration-none" target="_blank" rel="nofollow sponsored noopener"
+             onclick="try{{navigator.sendBeacon && navigator.sendBeacon('/track?id={s['id']}')}}catch(e){{}};">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-1">{html.escape(s['title'])}{badge}</h6>
+                <p class="card-text small text-muted">{html.escape(s['benefit'])}</p>
+                <div class="d-flex align-items-center">
+                  <span class="btn btn-sm btn-primary">Learn more</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>"""
+
+    top_html = "".join(card_html(s) for s in top)
+    rest_html = "".join(card_html(s) for s in rest)
+
+    return f"""
+    <section class="my-4">
+      <div class="d-flex align-items-baseline mb-2">
+        <h5 class="me-2 mb-0">Recommended Services</h5>
+        <span class="text-muted small">Hand-picked based on common needs</span>
+      </div>
+      <div class="row">{top_html}</div>
+
+      <details class="mt-2">
+        <summary class="small text-primary" style="cursor:pointer;">See all services</summary>
+        <div class="row mt-2">{rest_html}</div>
+      </details>
+
+      <p class="small text-muted mt-2">
+        We may earn a referral fee. We only show options that many users find genuinely helpful.
+      </p>
+    </section>
+    """
+
 BASE = """<!doctype html>
 <html lang=\"en\">
 <head>
@@ -343,7 +505,9 @@ def timeline():
             return jsonify({"columns": result.columns.tolist(),
                             "rows": result.to_dict(orient="records")})
         return jsonify({"data": result})
-
+        # --- Services panel (HTML only) ---
+    if isinstance(result, str):
+        result = result + _render_services_panel()
     return _render_any(result)
 
 
