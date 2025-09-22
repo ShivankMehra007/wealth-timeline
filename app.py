@@ -450,8 +450,11 @@ def _render_any(value):
             return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"), services=Markup(_render_services_panel()))
         except Exception:
             pass
-    return render_template_string(BASE, body=Markup(f"<pre>{html.escape(str(value), services=Markup(_render_services_panel()))}</pre>"))
-
+    return render_template_string(
+    BASE,
+    body=Markup(f"<pre>{html.escape(str(value))}</pre>"),
+    services=Markup(_render_services_panel())
+    )
 
 def _sanitize_kwargs(fn, raw: dict) -> dict:
     """Keep only parameters accepted by fn; add defaults and coerce lat/lon."""
@@ -512,7 +515,7 @@ def timeline():
             return jsonify({"columns": result.columns.tolist(),
                             "rows": result.to_dict(orient="records")})
         return jsonify({"data": result})
-        return _render_any(result)
+    return _render_any(result)
 
 
 # ---------- Places API (typeahead) ----------
