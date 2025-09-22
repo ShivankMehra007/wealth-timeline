@@ -313,6 +313,14 @@ BASE = """<!doctype html>
         {{ body|safe }}
       </div>
     </div>
+    </div>
+
+    <!-- Recommended Services (after results) -->
+    <div class="row mt-4">
+      <div class="col-12" id="services-below">
+        {{ services_below|safe }}
+      </div>
+    </div>
   </div>
 
   <script>
@@ -440,21 +448,18 @@ def _render_any(value):
         low = s.lower()
         if low.startswith("<!doctype") or "<html" in low:
             return Response(s, mimetype="text/html")
-        return render_template_string(BASE, body=Markup(s), services=Markup(_render_services_panel()))
+        return render_template_string(BASE, body=Markup(s), services=Markup(_render_services_panel()), services_below=Markup(_render_services_panel()))
     if pd is not None and isinstance(value, pd.DataFrame):
         table = value.to_html(index=False, classes="table table-striped table-sm")
-        return render_template_string(BASE, body=Markup(table), services=Markup(_render_services_panel()))
+        return render_template_string(BASE, body=Markup(table), services=Markup(_render_services_panel()), services_below=Markup(_render_services_panel()))
     if isinstance(value, (dict, list, tuple)):
         try:
             pretty = json.dumps(value, indent=2, default=str)
-            return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"), services=Markup(_render_services_panel()))
+            return render_template_string(BASE, body=Markup(f"<pre>{html.escape(pretty)}</pre>"), services=Markup(_render_services_panel()), services_below=Markup(_render_services_panel()))
         except Exception:
             pass
-    return render_template_string(
-    BASE,
-    body=Markup(f"<pre>{html.escape(str(value))}</pre>"),
-    services=Markup(_render_services_panel())
-    )
+    return render_template_string(BASE, body=Markup(f"<pre>{html.escape(str(value))}</pre>"), services=Markup(_render_services_panel()), services_below=Markup(_render_services_panel()))
+
 
 def _sanitize_kwargs(fn, raw: dict) -> dict:
     """Keep only parameters accepted by fn; add defaults and coerce lat/lon."""
@@ -485,7 +490,7 @@ def _sanitize_kwargs(fn, raw: dict) -> dict:
 
 @app.route("/", methods=["GET"])
 def home():
-    return render_template_string(BASE, body=Markup("<div class='help'>Results will appear here after you submit.</div>"), services=Markup(_render_services_panel()))
+    return render_template_string(BASE, body=Markup("<div class='help'>Results will appear here after you submit.</div>"), services=Markup(_render_services_panel()), services_below=Markup(""))
 
 
 @app.route("/timeline", methods=["POST"])
@@ -503,7 +508,7 @@ def timeline():
         # Build an HTML error explaining which args are expected
         expected = ", ".join(inspect.signature(timeline_from_args).parameters.keys())
         msg = f"<div class='alert alert-danger'>Bad input: {html.escape(str(e))}<br>Expected keys: <code>{html.escape(expected)}</code></div>"
-        return render_template_string(BASE, body=Markup(msg), services=Markup(_render_services_panel()))
+        return render_template_string(BASE, body=Markup(msg), services=Markup(_render_services_panel()), services_below=Markup(""))
 
     # JSON mode if requested
     wants_json = request.headers.get("Accept", "").lower().startswith("application/json") \
@@ -515,6 +520,7 @@ def timeline():
             return jsonify({"columns": result.columns.tolist(),
                             "rows": result.to_dict(orient="records")})
         return jsonify({"data": result})
+    # HTML mode
     return _render_any(result)
 
 
