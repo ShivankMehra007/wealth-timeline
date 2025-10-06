@@ -507,8 +507,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             reading_lines += [
                 "Benefic association/aspect on the 12th reduces the affliction.",
             ]
-
-
+    reading_lines += [
+            " <a href=\"https://www.astroved.com/customized-reports-one-year-detailed-money-and-prosperity-report-P118.aspx?affId=chartreader\">Click here</a> to get your One Year Detailed Prosperity Report.",
+        ]   
     reading_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on Lagna-lord</h3>"
         f"<p class='text-left mb-1'><em>{header}</em></p>"
