@@ -800,7 +800,11 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         ]
         if is_h2_benefic:
             reading2_lines.append("Since your 2nd house-lord is a natural benefic and situated in the 12th, you have a strong chance of becoming a renowned trader.")
-
+    
+    reading2_lines += [
+            "<a href=\"https://www.astroved.com/customized-reports-one-year-detailed-career-report-P119.aspx?affId=chartreader\">Click here</a> to get your One Year Detailed Career Report.",
+        ]
+    
     reading2_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 2nd-house lord</h3>"
         f"<p class='text-left mb-1'><em>{header2}</em></p>"
@@ -927,7 +931,11 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         reading3_lines += [
             "With your 3rd house lord placed in the 12th house, your life path shows a tendency toward hidden struggles and expenditures, sometimes directed toward questionable or indulgent pursuits. Relations with your father may feel strained, as his nature could come across as harsh or overly demanding. You may often find yourself at odds with relatives and friends, creating distance or friction in those connections. At the same time, gains through associations with women are strongly indicated, which can bring unexpected benefits or support. This placement also highlights a karmic pull toward distant lands, pointing to foreign travel, or even the possibility of residence abroad, where your growth and learning may unfold away from your place of origin.",
         ]
-
+        
+    reading3_lines += [
+        "<a href=\"https://www.astroved.com/customized-reports-one-year-detailed-health-and-well-being-report-P120.aspx?affId=chartreader\">Click here</a> to get your One Year Detailed Health & Wellness Report.",
+    ]
+    
     reading3_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 3rd‑house lord</h3>"
         f"<p class='text-left mb-1'><em>{header3}</em></p>"
@@ -1033,6 +1041,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         reading4_lines += [
             "With your 4th house lord placed in the 12th house, the foundation of home and inner security may feel fragile, often giving a sense of restlessness or even detachment from one’s homeland. This placement can sometimes point to difficulties in maintaining a stable domestic life, a tendency toward negligence or impractical habits, and a wandering or wayward conduct that makes it hard to feel rooted. There may be experiences of homelessness, frequent changes of residence, or living in places away from the comfort of your ancestral home. On the familial side, the chart shows a likelihood that the father may reside abroad or far from the native, creating a distance—geographical or emotional—that influences your inner life and sense of belonging.",
         ]
+        
+    reading4_lines += [
+        "<a href=\"https://www.astroved.com/customized-reports-astrologer-prescribed-remedy-for-your-problem-P125.aspx?affId=chartreader\">Click here</a> to get Astrological Remedy For Your Problem.",
+    ]
 
     reading4_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 4th-house lord</h3>"
@@ -1040,7 +1052,7 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         + "".join(f"<p class='text-left mb-1'>• {line}</p>" for line in reading4_lines)
         + "</div>"
     )
-
+    
     # Mahadasha note for 4th-house lord
     md4 = _md_period_for(h4_lord_pid)
     md4_note_html = ""
@@ -1173,6 +1185,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         reading5_lines += [
             "With your 5th house lord placed in the 12th house, your chart suggests a karmic pattern that may involve challenges related to children—either a delay in having children, denial of their comfort, or even childlessness in certain cases. At the same time, this placement strongly indicates a life connected with foreign lands—whether through long-distance travel, overseas residence, or spiritual retreats. This configuration often draws the native toward foreign service, charitable work, or healing professions abroad, though it may also bring hidden enemies and the need for spiritual detachment from material entanglements.",
         ]
+    
+    reading5_lines += [
+        "<a href=\"https://www.astroved.com/customized-reports-360-degree-love-profile-P132.aspx?affId=chartreader\">Click here</a> to get your Detailed Love & Relationships Report.",
+    ]
 
     reading5_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 5th-house lord</h3>"
@@ -1310,6 +1326,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         reading6_lines += [
             "With your 6th house lord placed in the 12th house, your chart suggests karmic entanglements linked to debts, enmities, and past-life consequences. This placement often brings challenges with wise or scholarly individuals—there may be a tendency to oppose or misunderstand them. Resources may be wasted on unworthy or degrading activities, and actions may at times inadvertently cause harm to other living beings. Financial losses are possible, particularly due to large animals or quadrupeds. There is also an indication of a restless, wandering nature—one who may feel driven by fate or unseen forces, often surrendering to a fatalistic outlook on life.",
         ]
+        
+    reading6_lines += [
+        "<a href=\"https://www.astroved.com/customized-reports-360-degree-love-profile-P132.aspx?affId=chartreader\">Click here</a> to get your Detailed Love & Relationships Report.",
+    ]
 
     reading6_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 6th-house lord</h3>"
@@ -1415,6 +1435,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "With your 7th house lord positioned in the 12th house, you may experience challenges related to partnerships and relationships. This placement suggests potential financial difficulties or poverty, possibly linked to your spouse's influence. It indicates that you might engage in trade related to garments or textiles, which could be a source of income. However, it's important to be cautious, as this alignment may also lead to significant expenses through your spouse and potential feelings of being deceived or misled within your relationship.",
         ]
 
+    reading7_lines += [
+        "<a href=\"https://www.astroved.com/customized-reports-business-prospect-report-P397.aspx?affId=chartreader\">Click here</a> to get your Business Prospects Report.",
+    ]
+    
     reading7_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 7th-house lord</h3>"
         f"<p class='text-left mb-1'><em>{header7}</em></p>"
@@ -1561,6 +1585,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "With your 8th house lord situated in the 12th house, you may find yourself drawn to spending on pursuits that may be deemed immoral or indulgent. This placement can indicate tendencies towards cruel or harsh behavior in relationships, and it may also contribute to chronic ailments that affect your well-being. Additionally, there may be inclinations towards thievish behaviors, suggesting a need to be mindful of integrity in both personal and professional interactions.",
         ]
 
+    reading8_lines += [
+        "<a href=\"https://www.astroved.com/nadi-astrology-agastya-nadi-essential-package-P62903.aspx?affId=chartreader\">Click here</a> to get detailed Agastya Nadi Reading.",
+    ]
+    
     reading8_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 8th-house lord</h3>"
         f"<p class='text-left mb-1'><em>{header8}</em></p>"
@@ -1660,6 +1688,10 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
             "With your 9th house lord positioned in the 12th house, you may experience some misfortunes, particularly regarding your wealth, which might be directed towards religious deeds and charitable acts. However, this placement also brings honor in foreign lands, suggesting that you could achieve recognition internationally. Additionally, you are likely to be scholarly and possess good looks, enhancing your appeal and intellect as you navigate your journey.",
         ]
 
+    reading9_lines += [
+        "<a href=\"https://www.astroved.com/nadi-astrology-essential-thuliya-nadi-package-P48065.aspx?affId=chartreader\">Click here</a> to get detailed Thuliya Nadi Reading.",
+    ]
+    
     reading9_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 9th-house lord</h3>"
         f"<p class='text-left mb-1'><em>{header9}</em></p>"
@@ -1771,6 +1803,9 @@ def timeline_from_args(*, name: str, date: str, time: str, lat, lon,
         if h10_lord_pid in NAT_MALEFICS_10:
             reading10_lines.append("Since your 10th house lord is a natural malefic, its placement in the 12th house indicates that you may have to wander or work in a foreign land.")
 
+    reading10_lines += [
+        "<a href=\"https://www.astroved.com/ask-astrologer-3-questions-consult-our-astrologer-ask-up-to-3-questions-P122.aspx?affId=chartreader\">Click here</a> to ask our panel of expert astrologers up to 3 questions and get clear guidance about how to deal with the issues.",
+    ]
     reading10_html = (
         f"<div class='mt-4'><h3 class='h6 text-center'>Reading based on 10th-house lord</h3>"
         f"<p class='text-left mb-1'><em>{header10}</em></p>"
