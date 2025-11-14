@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, request, render_template_string, jsonify, Response
+from flask import Flask, request, render_template_string, jsonify, Response, send_from_directory
 from markupsafe import Markup
 import inspect, json, html, math
 from pathlib import Path
@@ -128,6 +128,18 @@ SERVICES = [
         "benefit": "Peak performance periods & training focus"
     },
 ]
+
+@app.route("/ads.txt")
+def ads_txt():
+    fp = Path(app.root_path) / "ads.txt"
+    if not fp.exists():
+        # fallback: if you keep it in /static, you can 301 redirect
+        # return redirect(url_for('static', filename='ads.txt'), code=301)
+        return Response("ads.txt not found", status=404, mimetype="text/plain")
+    # Serve with sensible caching
+    resp = send_from_directory(app.root_path, "ads.txt", mimetype="text/plain")
+    resp.headers["Cache-Control"] = "public, max-age=86400"  # 24h
+    return resp
 
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
