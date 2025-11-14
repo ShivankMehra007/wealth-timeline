@@ -191,6 +191,8 @@ def _render_services_panel(top_categories=("career", "money", "relationships")):
 BASE = """<!doctype html>
 <html lang=\"en\">
 <head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2200267347781082"
+     crossorigin="anonymous"></script>
   <meta charset=\"utf-8\">
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
   <title>Free Astrology Chart & Predictions</title>
