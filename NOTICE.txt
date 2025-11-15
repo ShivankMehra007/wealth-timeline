@@ -1,0 +1,5 @@
+This software uses Swiss Ephemeris, a high precision ephemeris developed by Astrodienst AG.
+Swiss Ephemeris is licensed under the GNU AGPL-3.0 or a commercial license.
+This program is linked with Swiss Ephemeris under the terms of the AGPL-3.0.
+
+This software also uses PyJHora / pyswisseph, which are distributed under the GNU AGPL-3.0.
