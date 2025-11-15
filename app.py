@@ -310,27 +310,25 @@ BASE = """<!doctype html>
       </div>
     </div>
 
-    <!-- Recommended Services (always visible) -->
-    <div class=\"row mt-4\">
-      <div class=\"col-12\" id=\"services\">
-        {{ services|safe }}
-      </div>
-    </div>
-
-    <!-- Output area -->
-    <div class=\"row mt-4\">
-      <div class=\"col-12\" id=\"output\">
-        {{ body|safe }}
-      </div>
-    </div>
-    </div>
-
     <!-- Recommended Services (after results) -->
     <div class="row mt-4">
       <div class="col-12" id="services-below">
         {{ services_below|safe }}
       </div>
     </div>
+
+    <!-- Footer with legal links -->
+    <footer class="mt-4 pt-3 border-top small text-center text-muted">
+      <p class="mb-1">
+        &copy; 2025 Graha Guidance. All rights reserved.
+      </p>
+      <p class="mb-0">
+        <a href="/privacy-policy" class="text-decoration-none me-2">Privacy Policy</a>
+        <a href="/terms" class="text-decoration-none me-2">Terms &amp; Conditions</a>
+        <a href="/disclaimer" class="text-decoration-none me-2">Disclaimer</a>
+        <a href="/contact" class="text-decoration-none">Contact / Grievance</a>
+      </p>
+    </footer>
   </div>
 
   <script>
@@ -452,6 +450,327 @@ BASE = """<!doctype html>
 </html>
 """
 
+PRIVACY_PAGE = """<div class="card card-body shadow-sm">
+  <h1 class="h4 mb-2">Privacy Policy</h1>
+  <p class="small text-muted mb-3">Last updated: 15 November 2025</p>
+
+  <p>
+    This Privacy Policy explains how Graha Guidance (“we”, “us”, “our”) collects, uses,
+    and protects information when you use this website and the free astrology tools
+    hosted on it.
+  </p>
+
+  <h2 class="h5 mt-3">1. Information we collect</h2>
+  <p>We collect the following types of information that you voluntarily provide:</p>
+  <ul>
+    <li>Name or alias (if you choose to enter it).</li>
+    <li>Birth details used for chart calculation (date, time, place, latitude, longitude, timezone).</li>
+    <li>Any information you send to us by email or via the contact / grievance page.</li>
+  </ul>
+  <p>
+    We do <strong>not</strong> knowingly collect sensitive identifiers such as PAN, Aadhaar,
+    credit card numbers, or passwords through this site.
+  </p>
+
+  <h2 class="h5 mt-3">2. Non-personal &amp; usage data</h2>
+  <p>
+    Like most websites, we may automatically receive certain technical information,
+    such as your IP address, browser type, approximate location, pages visited and
+    time spent on the site. Analytics and advertising partners (for example,
+    Google AdSense) may also collect anonymised usage data through cookies
+    and similar technologies.
+  </p>
+
+  <h2 class="h5 mt-3">3. Cookies &amp; third-party services</h2>
+  <p>
+    This website may use cookies and similar technologies to:
+  </p>
+  <ul>
+    <li>Remember basic preferences.</li>
+    <li>Measure anonymous traffic and usage patterns.</li>
+    <li>Serve personalised or contextual advertisements.</li>
+  </ul>
+  <p>
+    Third-party services such as Google AdSense and affiliate program partners may
+    set and read their own cookies. Their use of data is governed by their own
+    privacy policies. You can usually control cookies through your browser settings.
+  </p>
+
+  <h2 class="h5 mt-3">4. How we use your information</h2>
+  <p>We use the information we collect to:</p>
+  <ul>
+    <li>Generate astrology charts and textual interpretations for you.</li>
+    <li>Improve, debug, and maintain the website and tools.</li>
+    <li>Respond to your messages and queries.</li>
+    <li>Comply with any legal obligations that may apply.</li>
+  </ul>
+
+  <h2 class="h5 mt-3">5. Legal basis &amp; data retention</h2>
+  <p>
+    We rely primarily on your consent and our legitimate interest in running and
+    improving this website. Birth details submitted for calculations may be stored
+    in logs or backups for a limited time for troubleshooting and performance
+    monitoring, but are not sold or rented to third parties.
+  </p>
+
+  <h2 class="h5 mt-3">6. Sharing of information</h2>
+  <p>
+    We do <strong>not</strong> sell your personal data. We may share limited data:
+  </p>
+  <ul>
+    <li>With service providers who help us host or maintain the site (e.g. hosting providers).</li>
+    <li>When required by law, regulation, or a valid legal request from authorities.</li>
+  </ul>
+
+  <h2 class="h5 mt-3">7. Your rights</h2>
+  <p>
+    Subject to applicable law, you may request that we:
+  </p>
+  <ul>
+    <li>Inform you what personal data we hold about you.</li>
+    <li>Correct inaccurate information.</li>
+    <li>Delete information that is no longer required for the purposes described above.</li>
+  </ul>
+  <p>
+    To exercise these rights, please write to us using the contact / grievance
+    details on the Contact page. We may need reasonable proof of identity before
+    acting on such requests.
+  </p>
+
+  <h2 class="h5 mt-3">8. Children’s privacy</h2>
+  <p>
+    This website is not specifically directed at children under 18. Parents or
+    guardians who use the site on behalf of a minor are responsible for supervising
+    and consenting to the sharing of that minor’s details.
+  </p>
+
+  <h2 class="h5 mt-3">9. Changes to this policy</h2>
+  <p>
+    We may update this Privacy Policy from time to time. The “Last updated” date
+    at the top of this page will change when we do so. Your continued use of the
+    site after such changes will be treated as your acceptance of the updated policy.
+  </p>
+
+  <h2 class="h5 mt-3">10. How to contact us</h2>
+  <p>
+    If you have any questions, concerns or requests about this Privacy Policy,
+    please contact us via the details given on the Contact / Grievance page.
+  </p>
+</div>
+"""
+
+TERMS_PAGE = """<div class="card card-body shadow-sm">
+  <h1 class="h4 mb-2">Terms &amp; Conditions</h1>
+  <p class="small text-muted mb-3">Last updated: 15 November 2025</p>
+
+  <p>
+    By accessing or using this website (“Site”) and the astrology tools made
+    available here, you agree to these Terms &amp; Conditions. If you do not
+    agree, please do not use the Site.
+  </p>
+
+  <h2 class="h5 mt-3">1. Nature of service</h2>
+  <p>
+    This Site provides free astrology-based chart calculations and interpretive
+    text for informational and entertainment purposes only. No paid consultation
+    or personalised professional service is offered on this Site itself.
+  </p>
+
+  <h2 class="h5 mt-3">2. No professional advice</h2>
+  <p>
+    Astrology interpretations are inherently subjective and speculative. Nothing
+    provided on this Site should be treated as a substitute for professional
+    advice in areas such as medicine, psychology, finance, investment, taxation,
+    legal matters, or career counselling. You are solely responsible for any
+    decisions you take based on the content generated here.
+  </p>
+
+  <h2 class="h5 mt-3">3. User responsibilities</h2>
+  <ul>
+    <li>You agree to provide accurate birth details to the best of your knowledge.</li>
+    <li>You agree not to misuse the Site, attempt to break security, or disrupt service.</li>
+    <li>You agree not to use the Site for any unlawful or harmful purpose.</li>
+  </ul>
+
+  <h2 class="h5 mt-3">4. Intellectual property</h2>
+  <p>
+    The underlying code, layout, and text content (except for any third-party
+    trademarks or logos) are the intellectual property of the site owner and
+    are protected by applicable copyright and other IP laws. You may not copy,
+    reproduce, or republish substantial portions of the Site without prior
+    written permission, except for personal, non-commercial use.
+  </p>
+
+  <h2 class="h5 mt-3">5. Third-party links &amp; affiliates</h2>
+  <p>
+    This Site may contain links to third-party websites, reports, or services,
+    some of which are affiliate links. We do not own or control these third-party
+    sites and are not responsible for their content, terms, or policies. Your
+    interactions with any third-party are solely between you and that party.
+  </p>
+
+  <h2 class="h5 mt-3">6. Limitation of liability</h2>
+  <p>
+    To the fullest extent permitted by law, the Site owner shall not be liable
+    for any direct, indirect, incidental, consequential or special loss or damage
+    arising out of or in connection with the use of, or inability to use, this
+    Site or any content provided through it.
+  </p>
+
+  <h2 class="h5 mt-3">7. Indemnity</h2>
+  <p>
+    You agree to indemnify and hold harmless the Site owner from any claims,
+    losses, liabilities, damages, costs or expenses (including reasonable legal
+    fees) arising out of your use of the Site or breach of these Terms.
+  </p>
+
+  <h2 class="h5 mt-3">8. Changes to the Site</h2>
+  <p>
+    We may modify, suspend or discontinue any part of the Site at any time,
+    including adding or removing features or content, without prior notice.
+  </p>
+
+  <h2 class="h5 mt-3">9. Changes to these Terms</h2>
+  <p>
+    We may revise these Terms &amp; Conditions from time to time. The “Last
+    updated” date will reflect the latest version. Continued use of the Site
+    after a change implies your acceptance of the revised Terms.
+  </p>
+
+  <h2 class="h5 mt-3">10. Governing law</h2>
+  <p>
+    These Terms are governed by, and shall be construed in accordance with,
+    the laws of India. Any disputes shall be subject to the exclusive jurisdiction
+    of the courts of New Delhi, India, to the extent permitted by law.
+  </p>
+</div>
+"""
+
+DISCLAIMER_PAGE = """<div class="card card-body shadow-sm">
+  <h1 class="h4 mb-2">Disclaimer &amp; Affiliate Disclosure</h1>
+  <p class="small text-muted mb-3">Last updated: 15 November 2025</p>
+
+  <h2 class="h5 mt-2">1. General disclaimer</h2>
+  <p>
+    All content and interpretations provided on this Site are based on traditional
+    principles of Vedic astrology and related methods. Astrology is an interpretive
+    discipline and not an exact science. While care is taken to keep the
+    calculations consistent, <strong>no guarantee is made</strong> that any
+    prediction or assessment will prove accurate in real life.
+  </p>
+  <p>
+    You should not rely on the information on this Site as a sole basis for making
+    important decisions about your health, finances, relationships, legal matters,
+    or career. Please consult qualified professionals for advice specific to your
+    situation.
+  </p>
+
+  <h2 class="h5 mt-3">2. No professional relationship</h2>
+  <p>
+    Your use of this Site does not create a doctor–patient, therapist–client,
+    lawyer–client, financial advisor–client or any other professional relationship.
+    The Site is offered purely for informational and educational purposes, and as
+    a free tool for exploration and self-reflection.
+  </p>
+
+  <h2 class="h5 mt-3">3. Accuracy of data</h2>
+  <p>
+    The quality of any chart or interpretation depends heavily on the accuracy of
+    the birth data you provide (date, time and place of birth). We cannot be held
+    responsible for inaccurate results that arise from incorrect or incomplete
+    data supplied by you.
+  </p>
+
+  <h2 class="h5 mt-3">4. Affiliate disclosure</h2>
+  <p>
+    Some pages on this Site contain links to third-party astrological reports,
+    products or services. These are affiliate links. This means that if you click
+    on such a link and subsequently make a purchase, we may receive a small
+    commission at <strong>no additional cost to you</strong>.
+  </p>
+  <p>
+    We only refer to services that we consider relevant to our audience, but we
+    do not control or manage any third-party products, websites or support. Any
+    issues with purchases, refunds or service quality must be taken up directly
+    with the respective third-party provider.
+  </p>
+
+  <h2 class="h5 mt-3">5. External links</h2>
+  <p>
+    Links to external websites are provided for convenience and informational
+    purposes. Inclusion of a link does not imply endorsement, approval, or
+    guarantee of the content, policies, or services of those websites.
+  </p>
+
+  <h2 class="h5 mt-3">6. Limitation of liability</h2>
+  <p>
+    To the maximum extent permitted by law, the Site owner disclaims all liability
+    for any loss, damage, injury or inconvenience arising from the use of, or
+    reliance upon, the information and tools provided on this Site or on any
+    linked external sites.
+  </p>
+
+  <h2 class="h5 mt-3">7. Acceptance of this Disclaimer</h2>
+  <p>
+    By using this Site, you acknowledge that you have read, understood and agreed
+    to this Disclaimer &amp; Affiliate Disclosure.
+  </p>
+</div>
+"""
+
+CONTACT_PAGE = """<div class="card card-body shadow-sm">
+  <h1 class="h4 mb-2">Contact &amp; Grievance Redressal</h1>
+  <p class="small text-muted mb-3">Last updated: 15 November 2025</p>
+
+  <p>
+    If you have any questions, feedback, concerns, or grievances related to this
+    website or the content hosted on it, you can reach out using the details below.
+  </p>
+
+  <h2 class="h5 mt-3">1. General contact</h2>
+  <p>
+    For general queries, suggestions, or correction requests, please write to:
+  </p>
+  <p class="mb-2">
+    <strong>Email:</strong> <span class="mono">contact@grahaguidance.com</span>
+  </p>
+  <p class="small text-muted">
+    (If this email ID changes, the latest contact details will be updated on this page.)
+  </p>
+
+  <h2 class="h5 mt-3">2. Grievance redressal</h2>
+  <p>
+    If you believe that any content on this Site is inaccurate, inappropriate,
+    violates your privacy, or otherwise causes concern, you may submit a grievance
+    by email with the subject line <strong>“Grievance – Graha Guidance”</strong>
+    and include:
+  </p>
+  <ul>
+    <li>Your full name and a valid contact email address.</li>
+    <li>A clear description of your concern or the content in question.</li>
+    <li>Any supporting details or links that help us identify the issue.</li>
+  </ul>
+  <p>
+    We aim to acknowledge genuine grievances within 7 working days and, where
+    appropriate, attempt to resolve them within a reasonable timeframe.
+  </p>
+
+  <h2 class="h5 mt-3">3. Data &amp; privacy requests</h2>
+  <p>
+    To request access to, correction of, or deletion of personal data that you
+    believe we may be holding about you in connection with this Site, please
+    contact us via email and clearly mention that your request relates to
+    “Privacy / Data Protection”.
+  </p>
+
+  <h2 class="h5 mt-3">4. Responsible &amp; respectful communication</h2>
+  <p>
+    We request that all communication remain respectful and relevant. Abusive,
+    threatening, or spam messages may be ignored or blocked.
+  </p>
+</div>
+"""
+
 def _render_any(value):
     if isinstance(value, str):
         s = value.lstrip()
@@ -532,6 +851,42 @@ def timeline():
         return jsonify({"data": result})
     # HTML mode
     return _render_any(result)
+    
+@app.route("/privacy-policy", methods=["GET"])
+def privacy_policy():
+    return render_template_string(
+        BASE,
+        body=Markup(PRIVACY_PAGE),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
+
+@app.route("/terms", methods=["GET"])
+def terms():
+    return render_template_string(
+        BASE,
+        body=Markup(TERMS_PAGE),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
+
+@app.route("/disclaimer", methods=["GET"])
+def disclaimer():
+    return render_template_string(
+        BASE,
+        body=Markup(DISCLAIMER_PAGE),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
+
+@app.route("/contact", methods=["GET"])
+def contact():
+    return render_template_string(
+        BASE,
+        body=Markup(CONTACT_PAGE),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
 
 
 # ---------- Places API (typeahead) ----------
