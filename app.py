@@ -308,14 +308,22 @@ BASE = """<!doctype html>
           </ul>
         </div>
       </div>
-    </div>
+        </div>
 
-    <!-- Recommended Services (after results) -->
-    <div class="row mt-4">
-      <div class="col-12" id="services-below">
-        {{ services_below|safe }}
-      </div>
-    </div>
+        <!-- Results section -->
+        <div class="row mt-4">
+          <div class="col-12" id="results">
+            {{ body|safe }}
+          </div>
+        </div>
+
+        <!-- Recommended Services (after results) -->
+        <div class="row mt-4">
+          <div class="col-12" id="services-below">
+            {{ services_below|safe }}
+          </div>
+        </div>
+
 
     <!-- Footer with legal links -->
     <footer class="mt-4 pt-3 border-top small text-center text-muted">
