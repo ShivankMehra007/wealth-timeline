@@ -749,7 +749,7 @@ CONTACT_PAGE = """<div class="card card-body shadow-sm">
     For general queries, suggestions, or correction requests, please write to:
   </p>
   <p class="mb-2">
-    <strong>Email:</strong> <span class="mono">contact@grahaguidance.com</span>
+    <strong>Email:</strong> <span class="mono">growthminddigitallab@gmail.com</span>
   </p>
   <p class="small text-muted">
     (If this email ID changes, the latest contact details will be updated on this page.)
