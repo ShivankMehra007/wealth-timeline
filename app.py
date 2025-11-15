@@ -326,9 +326,18 @@ BASE = """<!doctype html>
         <a href="/privacy-policy" class="text-decoration-none me-2">Privacy Policy</a>
         <a href="/terms" class="text-decoration-none me-2">Terms &amp; Conditions</a>
         <a href="/disclaimer" class="text-decoration-none me-2">Disclaimer</a>
-        <a href="/contact" class="text-decoration-none">Contact / Grievance</a>
+        <a href="/contact" class="text-decoration-none me-2">Contact / Grievance</a>
+
+        <!-- NEW: Link to GitHub Source Code -->
+        <a href="https://github.com/ShivankMehra007/wealth-timeline"
+           target="_blank"
+           rel="noopener"
+           class="text-decoration-none">
+           Source Code
+        </a>
       </p>
     </footer>
+
   </div>
 
   <script>
