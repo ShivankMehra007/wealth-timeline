@@ -611,11 +611,11 @@ TERMS_PAGE = """<div class="card card-body shadow-sm">
 
   <h2 class="h5 mt-3">4. Intellectual property</h2>
   <p>
-    The underlying code, layout, and text content (except for any third-party
-    trademarks or logos) are the intellectual property of the site owner and
-    are protected by applicable copyright and other IP laws. You may not copy,
-    reproduce, or republish substantial portions of the Site without prior
-    written permission, except for personal, non-commercial use.
+    All original code, layout, design elements, and text content provided on this website (excluding third-party trademarks, logos, and open-source components used under their respective licenses) are the intellectual property of the site owner.
+    These materials are protected by applicable copyright and intellectual-property laws.
+
+    Portions of the website’s software are made available under the GNU AGPL-3.0 open-source license. Where applicable, such components may be copied, modified, or redistributed only in accordance with the terms of that license.
+    All other content on this website may not be copied, reproduced, distributed, or republished without prior written permission from the site owner, except where permitted for personal, non-commercial use.
   </p>
 
   <h2 class="h5 mt-3">5. Third-party links &amp; affiliates</h2>
