@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, request, render_template_string, jsonify, Response, send_from_directory
+from flask import Flask, request, render_template_string, jsonify, Response, send_from_directory, abort
 from markupsafe import Markup
 import inspect, json, html, math
 from pathlib import Path
@@ -737,6 +737,109 @@ HOME_BODY_HTML = """<article class="card card-body shadow-sm mb-4">
 </section>
 """
 
+# --------- Guide / Article configuration ---------
+# Each guide/article lives here. You will later paste full HTML into "body".
+# For now we keep the bodies empty as placeholders.
+
+ARTICLES = {
+    "astrology-vs-reality-workbook": {
+        "title": "Astrology vs Reality: A Guided Workbook",
+        "description": "A structured way to compare your major life events with your dashā timeline and see where the chart truly fits.",
+        "body": "",
+    },
+    "karma-noise-ratio": {
+        "title": "The Karma–Noise Ratio",
+        "description": "A simple framework to separate what your chart may show from what is more likely environment, chance, or free will.",
+        "body": "",
+    },
+    "self-experimenting-with-dashas": {
+        "title": "Self-Experimenting with Dashās",
+        "description": "Turn your dashā periods into a personal experiment with structured logging, tags, and periodic reviews.",
+        "body": "",
+    },
+    "when-transits-fail": {
+        "title": "When Transits Fail",
+        "description": "Honest case studies where expectations from transits did not match reality, and what we can learn from those failures.",
+        "body": "",
+    },
+    "consent-based-remedies": {
+        "title": "Consent-Based Remedies Checklist",
+        "description": "A practical checklist of questions to ask before agreeing to any costly remedy, gemstone, or ritual.",
+        "body": "",
+    },
+    "astrology-for-big-life-bets": {
+        "title": "Astrology for Big Life Bets",
+        "description": "A risk checklist that combines chart factors with practical money, career, and relationship considerations.",
+        "body": "",
+    },
+    "twin-charts-different-lives": {
+        "title": "Twin Charts, Different Lives",
+        "description": "Explore how similar charts can lead to different outcomes, and what that means for free will and environment.",
+        "body": "",
+    },
+    "divisional-chart-reality-check": {
+        "title": "Divisional Chart Reality-Check",
+        "description": "A step-by-step method to see whether your Navāṁśa and Daśāṁśa actually match your relationship and career story.",
+        "body": "",
+    },
+}
+
+def _render_article_page(slug: str) -> str:
+
+    article = ARTICLES.get(slug)
+    if not article:
+        abort(404)
+
+    title = html.escape(article["title"])
+    body_html = article.get("body") or ""
+
+    return f"""
+<article class="card card-body shadow-sm mb-4">
+  <h1 class="h4 mb-3">{title}</h1>
+  {body_html}
+</article>
+"""
+
+
+def _render_guides_index() -> str:
+    """
+    Build an index page listing all guides as cards.
+    Uses ARTICLES dict for titles, slugs, descriptions.
+    """
+    cards = []
+    for slug, article in ARTICLES.items():
+        title = html.escape(article["title"])
+        desc = html.escape(article.get("description") or "")
+        cards.append(f"""
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <h2 class="h6">{title}</h2>
+            <p class="small text-muted">{desc}</p>
+            <a class="small text-decoration-none" href="/guides/{slug}">
+              Read guide &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+        """)
+
+    cards_html = "\n".join(cards)
+
+    return f"""
+<section class="mb-4">
+  <h1 class="h4 mb-3">Astrology Guides &amp; Workbooks</h1>
+  <p class="subtle">
+    These guides are designed to be practical tools: you generate your chart
+    using the form above, then follow the step-by-step instructions in each
+    article with your own data.
+  </p>
+  <div class="row">
+    {cards_html}
+  </div>
+</section>
+"""
+
 PRIVACY_PAGE = """<div class="card card-body shadow-sm">
   <h1 class="h4 mb-2">Privacy Policy</h1>
   <p class="small text-muted mb-3">Last updated: 15 November 2025</p>
@@ -1107,6 +1210,31 @@ def _sanitize_kwargs(fn, raw: dict) -> dict:
 @app.route("/", methods=["GET"])
 def home():
     return render_template_string(BASE, body=Markup(HOME_BODY_HTML), services=Markup(_render_services_panel()), services_below=Markup(""))
+
+@app.route("/guides", methods=["GET"])
+def guides_index():
+    """
+    List all guides/articles as cards. Uses the same BASE layout,
+    so the tool form stays visible at the top.
+    """
+    return render_template_string(
+        BASE,
+        body=Markup(_render_guides_index()),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
+
+@app.route("/guides/<slug>", methods=["GET"])
+def guide_page(slug):
+    """
+    Show a single guide/article page.
+    """
+    return render_template_string(
+        BASE,
+        body=Markup(_render_article_page(slug)),
+        services=Markup(""),
+        services_below=Markup(""),
+    )
 
 
 @app.route("/timeline", methods=["POST"])
