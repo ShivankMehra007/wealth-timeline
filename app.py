@@ -470,8 +470,8 @@ BASE = """<!doctype html>
 HOME_BODY_HTML = """<article class="card card-body shadow-sm mb-4">
   <h2 class="h4 mb-3">Welcome to Graha Guidance</h2>
   <p>
-    Graha Guidance is a free Vedic astrology lab where you can generate a structured
-    wealth and career timeline from your birth chart, and then honestly compare it
+    Graha Guidance is a free Vedic astrology tool where you can generate a structured
+    astrological chart reading, and then honestly compare it
     with your real life. The form above computes your chart and key timelines; this
     page explains how to use those results in a sensible, grounded way.
   </p>
@@ -484,7 +484,7 @@ HOME_BODY_HTML = """<article class="card card-body shadow-sm mb-4">
       keep your name anonymous if you prefer.
     </li>
     <li>
-      <strong>Generate your career &amp; wealth timeline.</strong>
+      <strong>Generate your predictions timeline.</strong>
       The tool calculates your dashā periods and key transits, checks divisional
       charts, and produces a clear, time-ordered view of potential peaks, dips and
       turning points.
@@ -506,10 +506,6 @@ HOME_BODY_HTML = """<article class="card card-body shadow-sm mb-4">
     <li>
       Focus on <strong>career and wealth houses</strong> (2nd, 6th, 10th, 11th, 8th, 12th),
       including their lords and important yogas.
-    </li>
-    <li>
-      Optional <strong>divisional chart checks</strong> (especially Navāṁśa/D-9 and
-      Daśāṁśa/D-10) to confirm patterns for relationships and career.
     </li>
     <li>
       Supporting factors like <strong>strength, aspects</strong> and other combinations
